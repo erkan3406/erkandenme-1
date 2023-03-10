@@ -1,13 +1,13 @@
 // helpers
 import {
-  Bool,
-  Field,
-  isReady,
-  MerkleMap,
-  MerkleMapWitness,
-  Mina,
-  PrivateKey,
-  Struct,
+    Bool,
+    Field,
+    isReady,
+    MerkleMap,
+    MerkleMapWitness,
+    Mina,
+    PrivateKey,
+    Struct,
 } from 'snarkyjs';
 import fs from 'fs';
 import readline from 'readline';
@@ -16,33 +16,33 @@ import util from 'util';
 await isReady;
 
 export function createLocalBlockchain(): PrivateKey {
-  let Local = Mina.LocalBlockchain({ accountCreationFee: 1e9 });
-  Mina.setActiveInstance(Local);
+    let Local = Mina.LocalBlockchain({accountCreationFee: 1e9});
+    Mina.setActiveInstance(Local);
 
-  const account = Local.testAccounts[0].privateKey;
-  return account;
+    const account = Local.testAccounts[0].privateKey;
+    return account;
 }
 
 export function createBerkeley(): PrivateKey {
-  let berkeley = Mina.Network(
-    'https://proxy.berkeley.minaexplorer.com/graphql'
-  );
+    let berkeley = Mina.Network(
+        'https://proxy.berkeley.minaexplorer.com/graphql'
+    );
 
-  Mina.setActiveInstance(berkeley);
+    Mina.setActiveInstance(berkeley);
 
-  let data = JSON.parse(
-    fs.readFileSync('keys/wallet.json', { encoding: 'utf-8' })
-  );
-  let pk = PrivateKey.fromBase58(data['privateKey'])!;
-  return pk;
+    let data = JSON.parse(
+        fs.readFileSync('keys/wallet.json', {encoding: 'utf-8'})
+    );
+    let pk = PrivateKey.fromBase58(data['privateKey'])!;
+    return pk;
 }
 
 export interface ProveMethod {
-  verificationKey?: {
-    data: string;
-    hash: Field | string;
-  };
-  zkappKey?: PrivateKey;
+    verificationKey?: {
+        data: string;
+        hash: Field | string;
+    };
+    zkappKey?: PrivateKey;
 }
 
 // export async function deployMultisig(
@@ -175,66 +175,68 @@ export interface ProveMethod {
 //Generic Utils
 
 interface Fieldable {
-  toFields(): Field[];
+    toFields(): Field[];
 }
 
 export function structArrayToFields(...args: Fieldable[]): Field[] {
-  return args.map((x) => x.toFields()).reduce((a, b) => a.concat(b), []);
+    return args.map((x) => x.toFields()).reduce((a, b) => a.concat(b), []);
 }
 
 //MerkleMap
 
 export class MerkleMapUtils {
-  static EMPTY_VALUE = Field(0);
+    static EMPTY_VALUE = Field(0);
 
-  static checkMembership(
-    witness: MerkleMapWitness,
-    root: Field,
-    key: Field,
-    value: Field
-  ): Bool {
-    let r = witness.computeRootAndKey(value);
-    r[0].assertEquals(root, '1');
-    r[1].assertEquals(key, '2');
-    return Bool(true);
-  }
+    static checkMembership(
+        witness: MerkleMapWitness,
+        root: Field,
+        key: Field,
+        value: Field
+    ): Bool {
+        let r = witness.computeRootAndKey(value);
+        r[0].assertEquals(root, '1');
+        r[1].assertEquals(key, '2');
+        return Bool(true);
+    }
 
-  static computeRoot(
-    witness: MerkleMapWitness,
-    key: Field,
-    value: Field
-  ): Field {
-    return witness.computeRootAndKey(value)[0];
-  }
+    static computeRoot(
+        witness: MerkleMapWitness,
+        key: Field,
+        value: Field
+    ): Field {
+        return witness.computeRootAndKey(value)[0];
+    }
 
-  // static getValuedWitness(map: MerkleMap, key: Field) : ValuedMerkleTreeWitness{
-  //     return new ValuedMerkleTreeWitness({
-  //         value: map.get(key),
-  //         witness: map.getWitness(key)
-  //     })
-  // }
+    // static getValuedWitness(map: MerkleMap, key: Field) : ValuedMerkleTreeWitness{
+    //     return new ValuedMerkleTreeWitness({
+    //         value: map.get(key),
+    //         witness: map.getWitness(key)
+    //     })
+    // }
 }
 
 export async function openConsole() {
-  let rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+    let rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
 
-  const question = util.promisify(rl.question).bind(rl);
+    const question = util.promisify(rl.question).bind(rl);
 
-  while (true) {
-    let s = await question('> ');
-    if ((s as any) === 'exit') {
-      break;
+    while (true) {
+        let s = await question('> ');
+        if ((s as any) === 'exit') {
+            break;
+        }
+        console.log(s);
+        console.log(eval(s as any));
     }
-    console.log(s);
-    console.log(eval(s as any));
-  }
 }
 
 export interface TransactionId {
-  isSuccess: boolean;
-  wait(options?: { maxAttempts?: number; interval?: number }): Promise<void>;
-  hash(): string | undefined;
+    isSuccess: boolean;
+
+    wait(options?: { maxAttempts?: number; interval?: number }): Promise<void>;
+
+    hash(): string | undefined;
 }
