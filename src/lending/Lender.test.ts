@@ -106,7 +106,7 @@ describeNetworkAware('lending - e2e', (context) => {
 
   let tokenPreMint = 1000000000n;
 
-  it(`enabled Basic token functionality - berkeley?: ${deployToBerkeley}`, async () => {
+  it(`Basic token functionality - berkeley?: ${deployToBerkeley}`, async () => {
     let deployResult = await deployNewToken('TOKEN1');
     await deployResult.tx.wait();
     let tokenPk = deployResult.pk;
