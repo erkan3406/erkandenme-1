@@ -14,8 +14,6 @@ import {
 } from 'snarkyjs';
 import fs from 'fs';
 import { tic, toc } from './tictoc';
-import { expect } from '@jest/globals';
-import { TokenUserEvent } from './lending/LendableToken';
 
 type DeployArgsFactory = (
   pk: PrivateKey,
@@ -46,109 +44,104 @@ let vkCache: { [key: string]: DeployVK } = {};
 //     return account.account?.zkapp?.appState ?? []
 // }
 
-export function describeNetworkAware(
-  name: string,
-  tests: (context: TestContext) => void
-): void {
-  let f = (deployToBerkeley: boolean, proofs: boolean) => {
-    describe(name, () => {
-      const signOrProve = async function signOrProve(
+export function getTestContext() : TestContext{
+
+    let deployToBerkeley = process.env.TEST_ON_BERKELEY === 'true' ?? false;
+    let proofs = process.env.TEST_WITH_PROOFS === 'true' ?? false;
+
+    console.log(process.env)
+
+    const signOrProve = async function signOrProve(
         tx: any,
         sender: PrivateKey,
         pks: PrivateKey[]
-      ) {
+    ) {
         if (proofs) {
-          tic('Proving Tx');
-          await tx.prove();
-          toc();
-          tx.sign([...pks, sender]); //TODO remove pks
+            tic('Proving Tx');
+            await tx.prove();
+            toc();
+            tx.sign([...pks, sender]); //TODO remove pks
         } else {
-          tx.sign([...pks, sender]);
+            tx.sign([...pks, sender]);
         }
-      };
+    };
 
-      let deployArgs: DeployArgsFactory = async (
+    let deployArgs: DeployArgsFactory = async (
         pk: PrivateKey,
         smartContract: typeof SmartContract
-      ) => {
+    ) => {
         if (proofs) {
-          if (vkCache[smartContract.name] == undefined) {
-            tic('Compiling ' + smartContract.name);
-            let { verificationKey } = await smartContract.compile();
-            toc();
-            vkCache[smartContract.name] = verificationKey;
-          }
-          let verificationKey = vkCache[smartContract.name];
+            if (vkCache[smartContract.name] == undefined) {
+                tic('Compiling ' + smartContract.name);
+                let { verificationKey } = await smartContract.compile();
+                toc();
+                vkCache[smartContract.name] = verificationKey;
+            }
+            let verificationKey = vkCache[smartContract.name];
 
-          return {
-            verificationKey,
-          };
+            return {
+                verificationKey,
+            };
         } else {
-          return {
-            zkappKey: pk,
-          };
+            return {
+                zkappKey: pk,
+            };
         }
-      };
+    };
 
-      let context: TestContext = {
+    let context: TestContext = {
         accounts: [],
         berkeley: deployToBerkeley,
         proofs,
         signOrProve,
         getDeployArgs: deployArgs,
         before: async () => {
-          return;
+            return;
         },
         getAccount: async (publicKey: PublicKey, tokenId?: Field) => {
-          if (deployToBerkeley) {
-            await fetchAccount({
-              publicKey,
-              tokenId: tokenId ? Token.Id.toBase58(tokenId) : undefined,
-            });
-          }
-          return Mina.getAccount(publicKey, tokenId);
+            if (deployToBerkeley) {
+                await fetchAccount({
+                    publicKey,
+                    tokenId: tokenId ? Token.Id.toBase58(tokenId) : undefined,
+                });
+            }
+            return Mina.getAccount(publicKey, tokenId);
         },
         editPermission: proofs
-          ? Permissions.proof()
-          : Permissions.proofOrSignature(),
-      };
+            ? Permissions.proof()
+            : Permissions.proofOrSignature(),
+    };
 
-      let before = async () => {
+    let before = async () => {
         await isReady;
 
         let Blockchain;
 
         if (deployToBerkeley) {
-          Blockchain = Mina.Network(
-            'https://proxy.berkeley.minaexplorer.com/graphql'
-          );
-          //TODO More PKs
-          context.accounts = getBerkeleyAccounts(10);
+            Blockchain = Mina.Network(
+                'https://proxy.berkeley.minaexplorer.com/graphql'
+            );
+            //TODO More PKs
+            context.accounts = getBerkeleyAccounts(10);
 
-          console.log('Requesting funds from faucet');
-          await Mina.faucet(context.accounts[0].toPublicKey());
-          console.log('Address funded!');
+            console.log('Requesting funds from faucet');
+            await Mina.faucet(context.accounts[0].toPublicKey());
+            console.log('Address funded!');
         } else {
-          let localBC = Mina.LocalBlockchain({
-            proofsEnabled: proofs,
-            enforceTransactionLimits: true,
-          });
-          Blockchain = localBC;
-          context.accounts = localBC.testAccounts.map((x) => x.privateKey);
+            let localBC = Mina.LocalBlockchain({
+                proofsEnabled: proofs,
+                enforceTransactionLimits: true,
+            });
+            Blockchain = localBC;
+            context.accounts = localBC.testAccounts.map((x) => x.privateKey);
         }
         Mina.setActiveInstance(Blockchain);
-      };
+    };
 
-      context.before = before;
+    context.before = before;
 
-      tests(context);
-    });
-  };
+    return context
 
-  let berkeley = process.env.TEST_ON_BERKELEY === 'true' ?? false;
-  let proofs = process.env.TEST_WITH_PROOFS === 'true' ?? false;
-
-  f(berkeley, proofs);
 }
 
 export function it2(name: string, f: () => void) {
