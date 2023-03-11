@@ -242,73 +242,81 @@ describeNetworkAware('Multisig - E2E', (context) => {
     }
   }
 
-  it(' enabled Test Approve', async () => {
-    let proposalAmount = UInt64.from(1000);
-    let proposal = new Proposal({
-      receiver: accounts[8].toPublicKey(),
-      amount: proposalAmount,
-    });
-    let votes: [Field, Field] = [Field(0), Field(0)];
+  it(
+    'enabled Test Approve - berkeley: ' +
+      context.berkeley +
+      ', proofs: ' +
+      context.proofs,
+    async () => {
+      let proposalAmount = UInt64.from(1000);
+      let proposal = new Proposal({
+        receiver: accounts[8].toPublicKey(),
+        amount: proposalAmount,
+      });
+      let votes: [Field, Field] = [Field(0), Field(0)];
 
-    let transition1 = computePublicInput(
-      proposal,
-      votes,
-      accounts[2].toPublicKey(),
-      Bool(true)
-    );
-    let witness1 = signers.getWitness(accounts[2].toPublicKey().x.toBigInt());
-    expect(votes[0]).toEqual(Field(1));
-    let transition2 = computePublicInput(
-      proposal,
-      votes,
-      accounts[3].toPublicKey(),
-      Bool(true)
-    );
-    let witness2 = signers.getWitness(accounts[3].toPublicKey().x.toBigInt());
+      let transition1 = computePublicInput(
+        proposal,
+        votes,
+        accounts[2].toPublicKey(),
+        Bool(true)
+      );
+      let witness1 = signers.getWitness(accounts[2].toPublicKey().x.toBigInt());
+      expect(votes[0]).toEqual(Field(1));
+      let transition2 = computePublicInput(
+        proposal,
+        votes,
+        accounts[3].toPublicKey(),
+        Bool(true)
+      );
+      let witness2 = signers.getWitness(accounts[3].toPublicKey().x.toBigInt());
 
-    let proof1 = await proveApproval(
-      accounts[2],
-      Bool(true),
-      transition1,
-      new MultiSigMerkleWitness(witness1)
-    );
-    let proof2 = await proveApproval(
-      accounts[3],
-      Bool(true),
-      transition2,
-      new MultiSigMerkleWitness(witness2)
-    );
+      let proof1 = await proveApproval(
+        accounts[2],
+        Bool(true),
+        transition1,
+        new MultiSigMerkleWitness(witness1)
+      );
+      let proof2 = await proveApproval(
+        accounts[3],
+        Bool(true),
+        transition2,
+        new MultiSigMerkleWitness(witness2)
+      );
 
-    let proof = await mergeProofs(proof1, proof2);
+      let proof = await mergeProofs(proof1, proof2);
 
-    if (context.proofs) {
-      console.log(proof.toJSON());
-    }
-
-    expect(proof).toBeDefined();
-    console.log('Proofs generated!');
-
-    let tx = await Mina.transaction(
-      { sender: accounts[0].toPublicKey() },
-      () => {
-        contract.approveWithProof(proof);
-        if (!context.proofs) {
-          contract.requireSignature();
-        }
+      if (context.proofs) {
+        console.log(proof.toJSON());
       }
-    );
-    await context.signOrProve(tx, accounts[0], [contractPk]);
-    await (await tx.send()).wait();
 
-    let contractAccount = await context.getAccount(contract.address);
-    let receiverAcccount = await context.getAccount(accounts[8].toPublicKey());
+      expect(proof).toBeDefined();
+      console.log('Proofs generated!');
 
-    expect(contractAccount.balance).toEqual(
-      UInt64.from(3 * 1e9).sub(proposalAmount)
-    );
-    expect(receiverAcccount.balance).toEqual(
-      UInt64.from(1000n * 10n ** 9n).add(proposalAmount)
-    );
-    //TODO Unfunded account
-  });
-})(false, false);
+      let tx = await Mina.transaction(
+        { sender: accounts[0].toPublicKey() },
+        () => {
+          contract.approveWithProof(proof);
+          if (!context.proofs) {
+            contract.requireSignature();
+          }
+        }
+      );
+      await context.signOrProve(tx, accounts[0], [contractPk]);
+      await (await tx.send()).wait();
+
+      let contractAccount = await context.getAccount(contract.address);
+      let receiverAcccount = await context.getAccount(
+        accounts[8].toPublicKey()
+      );
+
+      expect(contractAccount.balance).toEqual(
+        UInt64.from(3 * 1e9).sub(proposalAmount)
+      );
+      expect(receiverAcccount.balance).toEqual(
+        UInt64.from(1000n * 10n ** 9n).add(proposalAmount)
+      );
+      //TODO Unfunded account
+    }
+  );
+});
