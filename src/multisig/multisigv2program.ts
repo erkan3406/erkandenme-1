@@ -77,8 +77,6 @@ export const MultiSigProgramNoProofs = {
       Circuit.if(vote, Field(0), Field(1))
     );
 
-    Circuit.log('P1', proposalState);
-
     publicInput.to.state
       .hash()
       .assertEquals(

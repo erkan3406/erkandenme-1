@@ -21,12 +21,8 @@ import {
 } from './model';
 import { structArrayToFields, TransactionId } from '../utils';
 import { Lender, staticWitnessService, WitnessService } from './Lender';
-import { getTestContext, it2 } from '../JestExtensions';
+import {EventResponse, getTestContext, it2} from '../JestExtensions';
 import { expect } from '@jest/globals';
-
-type EventResponse = {
-  events: string[][];
-};
 
 describe('lending - e2e', () => {
   let context = getTestContext();
@@ -154,7 +150,9 @@ describe('lending - e2e', () => {
       token.address,
       Field(1)
     )) as EventResponse[];
+
     expect(events.length).toEqual(2);
+
     let decodedEvents = events.map((event) => {
       return {
         index: event.events[0][0],

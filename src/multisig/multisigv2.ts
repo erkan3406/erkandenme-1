@@ -28,6 +28,7 @@ export class MultiSigEvent extends Struct({
     proposal: Proposal,
     votes: [Field, Field],
     passed: Field, //0 = undecided, 1 = accepted, 2 = declined
+    receiverCreationFeePaid: Bool
 }) {
 }
 
@@ -73,6 +74,7 @@ export class MultiSigContract extends SmartContract {
 
     //Should be executed when enough votes have been reached
     @method approveWithProof(proof: MultisigProgramProof) {
+
         this.signerThreshold.assertEquals(this.signerThreshold.get());
         this.numSigners.assertEquals(this.numSigners.get());
         this.signerRoot.assertEquals(this.signerRoot.get());
@@ -144,6 +146,7 @@ export class MultiSigContract extends SmartContract {
                     Field(1),
                     Circuit.if(votesAgainstReached, Field(2), Field(0))
                 ),
+                receiverCreationFeePaid: isNew
             })
         );
     }

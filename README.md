@@ -18,9 +18,9 @@ GlobalSlot
 8 - Deploy SC:
 
 Tests to implement:
-depositTimelocked ( + isTimed )
-Not-permitted Transactions
-Events correctly emitted
+ - X depositTimelocked ( + isTimed )
+ - Not-permitted Transactions
+ - Events correctly emitted
 
 ### Lending
 

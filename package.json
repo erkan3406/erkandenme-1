@@ -22,7 +22,8 @@
     "test": "node --experimental-vm-modules --experimental-wasm-threads node_modules/jest/bin/jest.js",
     "testenabled": "node --experimental-vm-modules --experimental-wasm-threads node_modules/jest/bin/jest.js -- Multi",
     "testw": "node --experimental-vm-modules --experimental-wasm-threads node_modules/jest/bin/jest.js --watch",
-    "lint": "npx eslint src/* --fix"
+    "lint": "npx eslint src/* --fix",
+    "playground": "npm run build && node build/src/playground.js"
   },
   "lint-staged": {
     "**/*": [

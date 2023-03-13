@@ -49,8 +49,6 @@ export function getTestContext() : TestContext{
     let deployToBerkeley = process.env.TEST_ON_BERKELEY === 'true' ?? false;
     let proofs = process.env.TEST_WITH_PROOFS === 'true' ?? false;
 
-    console.log(process.env)
-
     const signOrProve = async function signOrProve(
         tx: any,
         sender: PrivateKey,
@@ -109,7 +107,7 @@ export function getTestContext() : TestContext{
         },
         editPermission: proofs
             ? Permissions.proof()
-            : Permissions.proofOrSignature(),
+            : Permissions.signature(),
     };
 
     let before = async () => {
@@ -143,6 +141,10 @@ export function getTestContext() : TestContext{
     return context
 
 }
+
+export type EventResponse = {
+    events: string[][];
+};
 
 export function it2(name: string, f: () => void) {
   console.log('Disabled');
