@@ -66,7 +66,7 @@ export class MultiSigContract extends SmartContract {
             editState: editPermission,
             editSequenceState: editPermission,
             incrementNonce: editPermission,
-            setVerificationKey: Permissions.none(),
+            setVerificationKey: Permissions.impossible(),
             setPermissions: editPermission,
             send: editPermission,
         });

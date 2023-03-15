@@ -11,7 +11,7 @@ import {
     Signature, UInt32, Circuit, Types, Permissions, fetchTransactionStatus,
 } from 'snarkyjs';
 import {beforeEach, afterAll, it, expect} from '@jest/globals';
-import {EventResponse, getTestContext, it2} from '../JestExtensions';
+import {EventResponse, EXTENDED_JEST_TIMEOUT, getTestContext, it2} from '../JestExtensions';
 import {MultiSigContract, MultiSigEvent} from './multisigv2';
 import {TransactionId} from '../utils';
 import {
@@ -55,10 +55,8 @@ describe('Multisig - E2E', () => {
 
         let editPermission = editPermissionOverride ?? context.editPermission
 
-        console.log('Init with k = ', k);
-
         let tx = await Mina.transaction(
-            {sender: accounts[0].toPublicKey(), fee: 0.01 * 1e9},
+            {sender: accounts[0].toPublicKey(), fee: context.defaultFee},
             () => {
                 //Pay account creation fee
                 AccountUpdate.fundNewAccount(
@@ -104,7 +102,7 @@ describe('Multisig - E2E', () => {
                 .map((x, i) => i + ': ' + x.toPublicKey().toBase58())
                 .reduce((a, b, i) => a + '\n' + b)
         );
-    });
+    }, EXTENDED_JEST_TIMEOUT);
 
     afterAll(() => {
         setInterval(shutdown, 0);
@@ -136,7 +134,7 @@ describe('Multisig - E2E', () => {
             await context.getDeployArgs(PrivateKey.random(), MultiSigContract)
             toc()
         }
-    });
+    }, EXTENDED_JEST_TIMEOUT);
 
     function computePublicInput(
         proposal: Proposal,
@@ -276,7 +274,7 @@ describe('Multisig - E2E', () => {
 
         let amount = UInt64.from(10000)
 
-        let tx2 = await Mina.transaction({ sender: accounts[0].toPublicKey() }, () => {
+        let tx2 = await Mina.transaction({ sender: accounts[0].toPublicKey(), fee: context.defaultFee }, () => {
 
             AccountUpdate.createSigned(accounts[0].toPublicKey())
                 .balance.subInPlace(amount)
@@ -323,7 +321,7 @@ describe('Multisig - E2E', () => {
         // expect(deployerAccount2.balance).toEqual(deployerAccount1.balance)
         // expect(deployerAccount2.nonce).toEqual(deployerAccount1.nonce)
 
-    })
+    }, EXTENDED_JEST_TIMEOUT)
 
     it(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
@@ -334,6 +332,8 @@ describe('Multisig - E2E', () => {
         );
         contract = instance;
         contractPk = pk;
+
+        expect(tx.isSuccess).toEqual(true)
 
         let proposalReceiver = PrivateKey.random().toPublicKey() //accounts[8]
         let initialReceiverBalance = UInt64.zero // UInt64.from(1000n * 10n ** 9n)
@@ -384,11 +384,17 @@ describe('Multisig - E2E', () => {
         expect(proof).toBeDefined();
         console.log('Proofs generated!');
 
-        console.log("Waiting for L1 MultiSig contract to be deployed...")
-        await tx.wait();
+        console.log(`Waiting for L1 MultiSig contract to be deployed... (${tx.hash()})`)
+        try {
+            await tx.wait();
+        }catch(e){
+            await tx.wait()
+        }
+
+        await context.getAccount(contract.address)
 
         let tx2 = await Mina.transaction(
-            {sender: accounts[0].toPublicKey()},
+            {sender: accounts[0].toPublicKey(), fee: context.defaultFee},
             () => {
                 contract.approveWithProof(proof);
                 if (!context.proofs) {
@@ -397,7 +403,13 @@ describe('Multisig - E2E', () => {
             }
         );
         await context.signOrProve(tx2, accounts[0], [contractPk]);
-        await (await tx2.send()).wait();
+        let txId2 = await tx2.send()
+
+        try {
+            await txId2.wait();
+        }catch(e){
+            await txId2.wait()
+        }
 
         let contractAccount = await context.getAccount(contract.address);
         let receiverAcccount = await context.getAccount(proposalReceiver);
@@ -431,5 +443,5 @@ describe('Multisig - E2E', () => {
         expect(multiSigEvent.receiverCreationFeePaid).toEqual(Bool(!receiverFunded))
 
         //TODO Unfunded account
-    });
+    }, EXTENDED_JEST_TIMEOUT);
 });
