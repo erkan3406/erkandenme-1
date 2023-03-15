@@ -1,6 +1,7 @@
 import {
+    AccountUpdate,
     Circuit,
-    DeployArgs,
+    DeployArgs, Experimental,
     Field,
     MerkleTree,
     method,
@@ -49,7 +50,7 @@ export class WitnessService {
         };
     } = {};
 
-    emptyMerkleRoot = new MerkleTree(LENDING_MERKLE_HEIGHT).getRoot();
+    static emptyMerkleRoot = new MerkleTree(LENDING_MERKLE_HEIGHT).getRoot();
 
     initUser(pk: string) {
         this.userTokenLiquidity[pk] = new MerkleTree(LENDING_MERKLE_HEIGHT);
@@ -60,15 +61,17 @@ export class WitnessService {
     }
 
     getWitnesses(action: UserLiquidityAction): LiquidityActionWitnesses {
+
         let userPk = action.user.toBase58();
 
         let witnessUser = new LendingMerkleWitness(
             this.userLiquidityMap.getWitness(action.user.x.toBigInt())
         );
+        let tokenLiquidityTree = this.userTokenLiquidity[userPk] ?? new MerkleTree(LENDING_MERKLE_HEIGHT) //In case the user doesn't exist, which happens if reducer calls when len(dispatched actions) < maxTransactionsWithActions
         let witnessToken = new LendingMerkleWitness(
-            this.userTokenLiquidity[userPk].getWitness(action.token.x.toBigInt())
+            tokenLiquidityTree.getWitness(action.token.x.toBigInt())
         );
-        let userInfo = this.userLiquidities[userPk];
+        let userInfo = this.userLiquidities[userPk] ?? new LendingUserInfo({borrowed: UInt64.zero, totalLiquidity: UInt64.zero, liquidityRoot: WitnessService.emptyMerkleRoot});
         let borrowed = userInfo.borrowed;
         let totalLiquidity = userInfo.totalLiquidity;
         let liquiditySoFar = userInfo[action.token.toBase58()] ?? UInt64.zero;
@@ -81,23 +84,49 @@ export class WitnessService {
             liquiditySoFar,
         });
 
-        //Make change
-        this.userTokenLiquidity[userPk].setLeaf(
-            action.token.x.toBigInt(),
-            liquiditySoFar.add(action.amount).value
-        );
-        let result = new LendingUserInfo({
-            borrowed,
-            totalLiquidity,
-            liquidityRoot: this.userTokenLiquidity[userPk].getRoot(),
-        });
-        console.log('Checkpoint 1A: ' + this.emptyMerkleRoot.toString());
-        this.userLiquidityMap.setLeaf(
-            action.user.x.toBigInt(),
-            result.hash(this.emptyMerkleRoot)
-        );
+        if(action.amount.toBigInt() > 0n) {
+            //Make change
+            this.userTokenLiquidity[userPk].setLeaf(
+                action.token.x.toBigInt(),
+                liquiditySoFar.add(action.amount).value
+            );
+            let result = new LendingUserInfo({
+                borrowed,
+                totalLiquidity,
+                liquidityRoot: this.userTokenLiquidity[userPk].getRoot(),
+            });
+
+            this.userLiquidityMap.setLeaf(
+                action.user.x.toBigInt(),
+                result.hash(WitnessService.emptyMerkleRoot)
+            );
+            userInfo.totalLiquidity = userInfo.totalLiquidity.add(action.amount)
+
+        }
 
         return witnesses;
+    }
+
+    getBorrowWitness(user: PublicKey, amount: UInt64) : [LendingMerkleWitness, LendingUserInfo] {
+
+        let w = this.userLiquidityMap.getWitness(user.x.toBigInt())
+        let userLiquidity = this.userLiquidities[user.toBase58()]
+        let userInfo = new LendingUserInfo({
+            borrowed: userLiquidity.borrowed,
+            totalLiquidity: userLiquidity.totalLiquidity,
+            liquidityRoot: this.userTokenLiquidity[user.toBase58()].getRoot()
+        })
+
+        //Changes
+        userLiquidity.borrowed = userLiquidity.borrowed.add(amount)
+        this.userLiquidityMap.setLeaf(user.x.toBigInt(), new LendingUserInfo({
+            borrowed: userLiquidity.borrowed,
+            totalLiquidity: userLiquidity.totalLiquidity,
+            liquidityRoot: this.userTokenLiquidity[user.toBase58()].getRoot(),
+        }).hash(WitnessService.emptyMerkleRoot))
+
+        return [new LendingMerkleWitness(w), userInfo]
+
     }
 }
 
@@ -111,7 +140,11 @@ class LenderLiquidityReducerResult extends Struct({
 
 //Info:
 //Every token has price of 1
+/*
 
+    This contract is the main contract of the mock-lending protocol.
+    It holds all tokens in the system (liquidity which is not borrowed yet)
+ */
 export class Lender extends SmartContract {
     @state(Field) userLiquidityRoot = State<Field>();
     // @state(Field) tokenLiquidityRoot = State<Field>()
@@ -124,11 +157,12 @@ export class Lender extends SmartContract {
         borrow: BorrowEvent,
     };
 
-    reducer = Reducer({actionType: UserLiquidityAction});
+    reducer = Reducer({ actionType: UserLiquidityAction });
+    // reducer = Reducer({ actionType: Field });
 
     signature_prefixes = {
-        borrow: Field(1236436301),
-        repay: Field(1236436302),
+        borrow: Field(1001),
+        repay: Field(1002),
     };
 
     //Reference to generate Witnesses
@@ -138,6 +172,7 @@ export class Lender extends SmartContract {
         address: PublicKey,
         witnessService: WitnessService
     ): Lender {
+        Lender.analyzeMethods()
         let contract = new Lender(address);
         contract.witnessService = witnessService;
         return contract;
@@ -162,7 +197,7 @@ export class Lender extends SmartContract {
         super.init(zkappKey);
 
         this.latestActionHash.set(Reducer.initialActionsHash);
-        this.userLiquidityRoot.set(this.witnessService.emptyMerkleRoot);
+        this.userLiquidityRoot.set(WitnessService.emptyMerkleRoot);
     }
 
     @method
@@ -178,6 +213,8 @@ export class Lender extends SmartContract {
         // this.userLiquidityRoot.assertEquals(liquidityRoot)
 
         let sender = this.sender; //So that only one witness is generated
+
+        Circuit.log("addLiquidity sender:", sender)
 
         let token = new LendableToken(tokenAddress);
         let success = token.transferFrom(
@@ -211,7 +248,7 @@ export class Lender extends SmartContract {
 
     @method
     rollupLiquidity() {
-        Circuit.log('Hallo');
+
         let latestActionsHash = this.latestActionHash.get();
         this.latestActionHash.assertEquals(latestActionsHash);
 
@@ -244,6 +281,7 @@ export class Lender extends SmartContract {
                     borrowed,
                     totalLiquidity,
                 } = Circuit.witness(LiquidityActionWitnesses, () => {
+                    console.log("Invoke 1")
                     return staticWitnessService.getWitnesses(action);
                 });
 
@@ -263,13 +301,12 @@ export class Lender extends SmartContract {
                     .calculateIndex()
                     .assertEquals(action.user.x, 'User witness index not correct');
 
-                Circuit.log('Checkpoint 1B', staticWitnessService.emptyMerkleRoot);
+                Circuit.log('Checkpoint 1B', WitnessService.emptyMerkleRoot);
                 witnessUser
-                    .calculateRoot(userInfo.hash(staticWitnessService.emptyMerkleRoot))
+                    .calculateRoot(userInfo.hash(WitnessService.emptyMerkleRoot))
                     .assertEquals(
                         state.liquidityRoot,
-                        'Liquidity membership check not successful: ' +
-                        action.user.toBase58()
+                        'Liquidity membership check not successful'
                     );
 
                 //Calculate new root
@@ -278,7 +315,7 @@ export class Lender extends SmartContract {
                 );
 
                 let newRoot = witnessUser.calculateRoot(
-                    userInfo.hash(staticWitnessService.emptyMerkleRoot)
+                    userInfo.hash(WitnessService.emptyMerkleRoot)
                 );
 
                 let newTotalCollateral = state.totalCollateral.add(action.amount);
@@ -344,31 +381,33 @@ export class Lender extends SmartContract {
             );
 
         signature
-            .verify(
-                sender,
+            .verify(sender,
                 structArrayToFields(
                     this.signature_prefixes['borrow'],
                     tokenAddress,
                     amount.value
                 )
-            )
-            .assertTrue('Signature not valid');
+            ).assertTrue('Signature not valid');
 
         witness
             .calculateIndex()
             .assertEquals(sender.x, 'Witness index not correct');
 
         witness
-            .calculateRoot(userInfo.hash(this.witnessService.emptyMerkleRoot))
+            .calculateRoot(userInfo.hash(WitnessService.emptyMerkleRoot))
             .assertEquals(liquidityRoot, 'Liquidity root not validated');
 
         userInfo.borrowed = userInfo.borrowed.add(amount);
 
         let token = new LendableToken(tokenAddress);
-        token.approveUpdateAndSend(this.self, sender, amount);
+
+        let au = Experimental.createChildAccountUpdate(this.self, this.address, token.token.id)
+        au.balance.subInPlace(amount)
+
+        token.approveUpdateAndSend(au, sender, amount);
 
         let newLiquidityRoot = witness.calculateRoot(
-            userInfo.hash(this.witnessService.emptyMerkleRoot)
+            userInfo.hash(WitnessService.emptyMerkleRoot)
         );
 
         this.userLiquidityRoot.set(newLiquidityRoot);

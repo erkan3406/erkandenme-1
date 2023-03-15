@@ -31,6 +31,9 @@ export class TokenUserEvent extends Struct({
 }
 
 export class LendableToken extends SmartContract {
+
+    static INITIAL_MINT = 1000000000
+
     @state(UInt64) totalAmountInCirculation = State<UInt64>();
     @state(Field) approvalRoot = State<Field>();
 
@@ -58,7 +61,7 @@ export class LendableToken extends SmartContract {
         });
 
         let sender = this.sender;
-        let amount = UInt64.from(1000000000);
+        let amount = UInt64.from(LendableToken.INITIAL_MINT);
 
         Circuit.log('Minted to: ', sender);
 
@@ -87,7 +90,7 @@ export class LendableToken extends SmartContract {
         );
     }
 
-    //Copied from snarkyjs/dex.ts
+    //Copied from snarkyjs/examples/dex.ts
     @method approveUpdateAndSend(
         zkappUpdate: AccountUpdate,
         to: PublicKey,

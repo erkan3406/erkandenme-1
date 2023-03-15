@@ -9,7 +9,7 @@ import {
     Signature,
     UInt64,
     Field,
-    UInt32,
+    UInt32, MerkleMap,
 } from 'snarkyjs';
 import * as fs from 'fs';
 import {LendableToken, TokenUserEvent} from './LendableToken';
@@ -94,7 +94,8 @@ describe('lending - e2e', () => {
 
     let tokenPreMint = 1000000000n;
 
-    it(`Basic token functionality - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+    it2(`Basic token functionality - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+
         let deployResult = await deployNewToken('TOKEN1');
         await deployResult.tx.wait();
         let tokenPk = deployResult.pk;
@@ -177,120 +178,171 @@ describe('lending - e2e', () => {
         expect(decodedEvents[1].event.amount).toEqual(amount);
     }, EXTENDED_JEST_TIMEOUT);
 
-    it2(`Adding Liquidity - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
-        async () => {
+    it(`Adding Liquidity - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,async () => {
 
-            let witnessService = staticWitnessService;
-            let account = await context.getAccount(accounts[0].toPublicKey());
+        let witnessService = staticWitnessService;
+        witnessService.initUser(accounts[0].toPublicKey().toBase58())
 
-            expect(account).toBeDefined();
-            let startingNonce = Number(account.nonce.toBigint());
+        let account = await context.getAccount(accounts[0].toPublicKey());
+        expect(account).toBeDefined();
+        let startingNonce = Number(account.nonce.toBigint());
 
-            let tokenDeployResult = await deployNewToken('LT1');
-            let tokenPk = tokenDeployResult.pk;
-            let tokenAllowances = new MerkleTree(LENDING_MERKLE_HEIGHT);
+        //Deploy a test token
+        let tokenDeployResult = await deployNewToken('LT1');
+        let tokenPk = tokenDeployResult.pk;
+        let tokenAllowances = new MerkleTree(LENDING_MERKLE_HEIGHT);
 
-            let lenderDeployResult = await deployLender(
-                witnessService,
-                startingNonce + 1
-            );
-            let lenderPk = lenderDeployResult.pk;
+        let lenderDeployResult = await deployLender(
+            witnessService,
+            startingNonce + 1
+        );
+        let lenderPk = lenderDeployResult.pk;
 
-            let token = new LendableToken(tokenPk.toPublicKey());
-            let lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
+        let token = new LendableToken(tokenPk.toPublicKey());
+        let lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
 
-            await tokenDeployResult.tx.wait();
-            await lenderDeployResult.tx.wait();
+        await tokenDeployResult.tx.wait();
+        await lenderDeployResult.tx.wait();
 
-            let amount = UInt64.from(10000);
-            let approveSignature = Signature.create(
-                accounts[0],
-                structArrayToFields(amount, lender.address, token.token.id)
-            );
-            let allowanceIndex = Poseidon.hash(
-                structArrayToFields(accounts[0].toPublicKey(), lender.address)
-            );
-            let witness = new LendingMerkleWitness(
-                tokenAllowances.getWitness(allowanceIndex.toBigInt()) //Witness is same for all indizes because tree is empty
-            );
+        let amount = UInt64.from(10000);
+        let approveSignature = Signature.create(
+            accounts[0],
+            structArrayToFields(amount, lender.address, token.token.id)
+        );
+        let allowanceIndex = Poseidon.hash(
+            structArrayToFields(accounts[0].toPublicKey(), lender.address)
+        );
+        let witness = new LendingMerkleWitness(
+            tokenAllowances.getWitness(allowanceIndex.toBigInt()) //Witness is same for all indizes because tree is empty
+        );
 
-            let tx = await Mina.transaction(
-                {sender: accounts[0].toPublicKey(), fee: context.defaultFee, nonce: startingNonce + 2},
-                () => {
-                    token.approveTokens(
-                        accounts[0].toPublicKey(),
-                        approveSignature,
-                        lender.address,
-                        amount,
-                        witness,
-                        Field(0)
-                    );
-                    if (!context.proofs) {
-                        token.requireSignature();
-                    }
-                }
-            );
-            await context.signOrProve(tx, accounts[0], [tokenPk]);
-            await (await tx.send()).wait();
+        //TODO Figure out how to approve and spend tokens in the same tx
 
-            let tx3 = await Mina.transaction({sender: accounts[0].toPublicKey(), fee: context.defaultFee}, () => {
-                AccountUpdate.fundNewAccount(
+        let tx = await Mina.transaction(
+            {sender: accounts[0].toPublicKey(), fee: context.defaultFee, nonce: startingNonce + 2},
+            () => {
+                token.approveTokens(
                     accounts[0].toPublicKey(),
-                    1
-                ).requireSignature();
-
-                lender.addLiquidity(
-                    token.address,
+                    approveSignature,
+                    lender.address,
                     amount,
-                    new ValuedMerkleTreeWitness({
-                        witness,
-                        value: amount.value,
-                    })
+                    witness,
+                    Field(0)
                 );
                 if (!context.proofs) {
-                    lender.requireSignature();
-                    lender.self.children.accountUpdates.forEach((x) =>
-                        x.requireSignature()
-                    );
+                    token.requireSignature();
                 }
-            });
-            await context.signOrProve(tx3, accounts[0], [lenderPk, tokenPk]);
-            tx3.transaction.accountUpdates.forEach((au) => console.log(au.toJSON()));
-            await (await tx3.send()).wait();
+            }
+        );
+        await context.signOrProve(tx, accounts[0], [tokenPk]);
+        let txId = (await tx.send());
 
-            let state =
-                (await context.getAccount(lender.address)).zkapp?.appState ?? [];
-            expect(state[0]).toEqual(witnessService.emptyMerkleRoot);
-            expect(state[1]).toEqual(Field(0));
-
-            let deployerTokenAccount = await context.getAccount(
+        let tx3 = await Mina.transaction({sender: accounts[0].toPublicKey(), fee: context.defaultFee}, () => {
+            AccountUpdate.fundNewAccount(
                 accounts[0].toPublicKey(),
-                token.token.id
-            );
-            expect(deployerTokenAccount.balance).toEqual(
-                UInt64.from(tokenPreMint).sub(amount)
-            );
-            let lenderTokenAccount = await context.getAccount(
-                lender.address,
-                token.token.id
-            );
-            expect(lenderTokenAccount.balance).toEqual(amount);
-            console.log('Checkpoint A7');
+                1
+            ).requireSignature();
 
-            let tx2 = await Mina.transaction(
-                {sender: accounts[0].toPublicKey(), fee: context.defaultFee},
-                () => {
+            lender.addLiquidity(
+                token.address,
+                amount,
+                new ValuedMerkleTreeWitness({
+                    witness,
+                    value: amount.value,
+                })
+            );
+            if (!context.proofs) {
+                lender.requireSignature();
+                lender.self.children.accountUpdates.forEach((x) =>
+                    x.requireSignature()
+                );
+            }
+        });
+        await context.signOrProve(tx3, accounts[0], [lenderPk, tokenPk]);
+        // tx3.transaction.accountUpdates.forEach((au) => console.log(au.toJSON()));
+        await txId.wait()
+        await (await tx3.send()).wait();
+
+        let state = (await context.getAccount(lender.address)).zkapp?.appState ?? [];
+        expect(state[0]).toEqual(WitnessService.emptyMerkleRoot);
+        expect(state[1]).toEqual(Field(0));
+
+        let deployerTokenAccount = await context.getAccount(
+            accounts[0].toPublicKey(),
+            token.token.id
+        );
+        expect(deployerTokenAccount.balance).toEqual(
+            UInt64.from(tokenPreMint).sub(amount)
+        );
+        let lenderTokenAccount = await context.getAccount(
+            lender.address,
+            token.token.id
+        );
+        expect(lenderTokenAccount.balance).toEqual(amount);
+
+        let tx2 = await Mina.transaction(
+            {sender: accounts[0].toPublicKey(), fee: context.defaultFee},
+            () => {
+                try {
                     lender.rollupLiquidity();
-                    if (!context.proofs) {
-                        lender.requireSignature();
-                    }
+                }catch(e){
+                    console.log("Exception at rollup:")
+                    console.log(e)
+                    throw e
                 }
-            );
-            console.log('Checkpoint A8');
-            await context.signOrProve(tx2, accounts[0], [lenderPk]);
-            await (await tx2.send()).wait();
+                if (!context.proofs) {
+                    lender.requireSignature();
+                }
+            }
+        );
+        await context.signOrProve(tx2, accounts[0], [lenderPk]);
+        await (await tx2.send()).wait();
 
-        }, EXTENDED_JEST_TIMEOUT);
+        let contractAccount0 = await context.getAccount(lender.address)
+        expect(contractAccount0.zkapp?.appState[0]).toEqual(witnessService.userLiquidityMap.getRoot())
+
+        // --------- Borrowing
+        let borrowAmount = amount.div(2)
+        let signature = Signature.create(accounts[0], structArrayToFields(
+            lender.signature_prefixes['borrow'],
+            token.address,
+            borrowAmount
+        ))
+
+        let [borrowWitness, borrowUserInfo] = witnessService.getBorrowWitness(accounts[0].toPublicKey(), borrowAmount)
+        let tx4 = await Mina.transaction(
+            { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
+            () => {
+                lender.borrow(
+                    token.address,
+                    borrowAmount,
+                    signature,
+                    borrowWitness,
+                    borrowUserInfo
+                )
+                if (!context.proofs) {
+                    lender.requireSignature();
+                    lender.self.children.accountUpdates.forEach((x) => {
+                        x.requireSignature();
+                        x.children.accountUpdates.forEach((y) =>
+                            y.requireSignature()
+                        );
+                    });
+                }
+            }
+        )
+        await context.signOrProve(tx4, accounts[0], [lenderPk, tokenPk]);
+        await (await tx4.send()).wait();
+
+        let borrowAccount0 = await context.getAccount(accounts[0].toPublicKey(), token.token.id)
+        expect(borrowAccount0.balance).toEqual(UInt64.from(LendableToken.INITIAL_MINT).sub(amount).add(borrowAmount))
+
+        let contractAccount1Token = await context.getAccount(lender.address, token.token.id)
+        expect(contractAccount1Token.balance).toEqual(amount.sub(borrowAmount))
+        let contractAccount1 = await context.getAccount(lender.address)
+        expect(contractAccount1.zkapp?.appState[0]).toEqual(witnessService.userLiquidityMap.getRoot())
+
+    }, EXTENDED_JEST_TIMEOUT);
 
     // it(`3 not equals 5 - berkeley?: ${deployToBerkeley}`, () => {
     //     expect(3).not.toEqual(5);
