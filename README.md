@@ -24,6 +24,12 @@ Tests to implement:
 
 ### Lending
 
+The Lending protocol allows users to borrow assets overcollateralized.
+Users add liquidity to the system in the form of tokens, where every token has the price of 1.
+Then, the user can borrow any other assets in the protocol which has liquidity against his/her collateral and not above that.
+
+Covered Surface Areas:
+
 2 - Call stack composability:
 
 3 - Actions/Reducer: 

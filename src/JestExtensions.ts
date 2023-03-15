@@ -9,7 +9,7 @@ import {
   PublicKey,
   SmartContract,
   Token,
-  Types,
+  Types, UInt64,
 } from 'snarkyjs';
 import fs from 'fs';
 import { tic, toc } from './tictoc';
@@ -32,16 +32,12 @@ type TestContext = {
   before: () => Promise<void>;
   getAccount: (pk: PublicKey, tokenId?: Field) => Promise<Types.Account>;
   editPermission: Types.AuthRequired;
+  defaultFee: UInt64
 };
 
 type DeployVK = { data: string; hash: string | Field };
 
 let vkCache: { [key: string]: DeployVK } = {};
-
-// async function getZkappState(publicKey: PublicKey, tokenId?: string) : Promise<Field[]> {
-//     let account = await fetchAccount({ publicKey, tokenId })
-//     return account.account?.zkapp?.appState ?? []
-// }
 
 export function getTestContext(): TestContext {
   let deployToBerkeley = process.env.TEST_ON_BERKELEY === 'true' ?? false;
@@ -66,7 +62,9 @@ export function getTestContext(): TestContext {
     pk: PrivateKey,
     smartContract: typeof SmartContract
   ) => {
+
     if (proofs) {
+
       if (vkCache[smartContract.name] == undefined) {
         tic('Compiling ' + smartContract.name);
         let { verificationKey } = await smartContract.compile();
@@ -78,10 +76,9 @@ export function getTestContext(): TestContext {
       return {
         verificationKey,
       };
+
     } else {
-      return {
-        zkappKey: pk,
-      };
+      return { zkappKey: pk };
     }
   };
 
@@ -104,6 +101,7 @@ export function getTestContext(): TestContext {
       return Mina.getAccount(publicKey, tokenId);
     },
     editPermission: proofs ? Permissions.proof() : Permissions.signature(),
+    defaultFee: UInt64.from(0.01 * 1e9)
   };
 
   let before = async () => {
@@ -113,14 +111,33 @@ export function getTestContext(): TestContext {
 
     if (deployToBerkeley) {
       Blockchain = Mina.Network(
-        'https://proxy.berkeley.minaexplorer.com/graphql'
+        // 'https://proxy.berkeley.minaexplorer.com/graphql'
+          'https://berkeley.eu2.rpanic.com/graphql'
       );
-      //TODO More PKs
+      Mina.setActiveInstance(Blockchain);
       context.accounts = getBerkeleyAccounts(10);
 
-      console.log('Requesting funds from faucet');
-      await Mina.faucet(context.accounts[0].toPublicKey());
-      console.log('Address funded!');
+      let mainPk = context.accounts[0].toPublicKey()
+
+      let requestFaucet = async () => {
+        console.log('Requesting funds from faucet to ' + mainPk.toBase58());
+        await Mina.faucet(mainPk);
+        console.log('Address funded!');
+      }
+
+      try{
+        let mainAccount = await context.getAccount(mainPk)
+
+        if(mainAccount.balance.toBigInt() === 0n){
+          await requestFaucet()
+        }else{
+          console.log("Account already funded") //If it doesn't throw -> means the account already exists onchain
+        }
+
+      }catch (e){
+        await requestFaucet()
+      }
+
     } else {
       let localBC = Mina.LocalBlockchain({
         proofsEnabled: proofs,
@@ -128,8 +145,8 @@ export function getTestContext(): TestContext {
       });
       Blockchain = localBC;
       context.accounts = localBC.testAccounts.map((x) => x.privateKey);
+      Mina.setActiveInstance(Blockchain);
     }
-    Mina.setActiveInstance(Blockchain);
   };
 
   context.before = before;
@@ -141,7 +158,7 @@ export type EventResponse = {
   events: string[][];
 };
 
-export function it2(name: string, f: () => void) {
+export function it2(name: string, f: () => void, timeout?: number) {
   console.log('Disabled ' + name);
 }
 
@@ -150,20 +167,38 @@ type SavedKeypair = {
   publicKey: string;
 };
 
+let keysDir = "keys";
+let keysPath = keysDir + '/berkeley.json';
+
 //Get keys from /keys, or else create them
 export function getBerkeleyAccounts(num: number): PrivateKey[] {
-  let keysPath = 'keys/berkeley.json';
+
   if (fs.existsSync(keysPath)) {
     let json = JSON.parse(
       fs.readFileSync(keysPath).toString()
     ) as SavedKeypair[];
     return json.map((x) => PrivateKey.fromBase58(x.privateKey));
   } else {
-    let pks = [];
-    for (let i = 0; i < num; i++) {
-      pks.push(PrivateKey.random());
-    }
-    fs.writeFileSync(keysPath, JSON.stringify(pks));
-    return pks;
+
+    return regenerateBerkeleyAccounts(num)
   }
 }
+
+function regenerateBerkeleyAccounts(num: number) {
+  if(!fs.existsSync(keysDir)){
+    fs.mkdirSync(keysDir)
+  }
+
+  let pks: SavedKeypair[] = [];
+  for (let i = 0; i < num; i++) {
+    let pk = PrivateKey.random()
+    pks.push({
+      privateKey: pk.toBase58(),
+      publicKey: pk.toPublicKey().toBase58()
+    });
+  }
+  fs.writeFileSync(keysPath, JSON.stringify(pks));
+  return pks.map(x => PrivateKey.fromBase58(x.privateKey));
+}
+
+export const EXTENDED_JEST_TIMEOUT = 30 * 60 * 1000; //30 minutes
