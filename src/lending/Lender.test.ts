@@ -9,7 +9,7 @@ import {
     Signature,
     UInt64,
     Field,
-    UInt32, MerkleMap,
+    UInt32, MerkleMap, Experimental,
 } from 'snarkyjs';
 import * as fs from 'fs';
 import {LendableToken, TokenUserEvent} from './LendableToken';
@@ -20,9 +20,10 @@ import {
     ValuedMerkleTreeWitness,
 } from './model';
 import {structArrayToFields, TransactionId} from '../utils';
-import {Lender, staticWitnessService, WitnessService} from './Lender';
+import {Lender, staticWitnessService} from './Lender';
 import {EventResponse, EXTENDED_JEST_TIMEOUT, getTestContext, it2} from '../JestExtensions';
 import {expect} from '@jest/globals';
+import {WitnessService} from "./WitnessService";
 
 describe('lending - e2e', () => {
     let context = getTestContext();
@@ -190,7 +191,6 @@ describe('lending - e2e', () => {
         //Deploy a test token
         let tokenDeployResult = await deployNewToken('LT1');
         let tokenPk = tokenDeployResult.pk;
-        let tokenAllowances = new MerkleTree(LENDING_MERKLE_HEIGHT);
 
         let lenderDeployResult = await deployLender(
             witnessService,
@@ -205,37 +205,6 @@ describe('lending - e2e', () => {
         await lenderDeployResult.tx.wait();
 
         let amount = UInt64.from(10000);
-        let approveSignature = Signature.create(
-            accounts[0],
-            structArrayToFields(amount, lender.address, token.token.id)
-        );
-        let allowanceIndex = Poseidon.hash(
-            structArrayToFields(accounts[0].toPublicKey(), lender.address)
-        );
-        let witness = new LendingMerkleWitness(
-            tokenAllowances.getWitness(allowanceIndex.toBigInt()) //Witness is same for all indizes because tree is empty
-        );
-
-        //TODO Figure out how to approve and spend tokens in the same tx
-
-        let tx = await Mina.transaction(
-            {sender: accounts[0].toPublicKey(), fee: context.defaultFee, nonce: startingNonce + 2},
-            () => {
-                token.approveTokens(
-                    accounts[0].toPublicKey(),
-                    approveSignature,
-                    lender.address,
-                    amount,
-                    witness,
-                    Field(0)
-                );
-                if (!context.proofs) {
-                    token.requireSignature();
-                }
-            }
-        );
-        await context.signOrProve(tx, accounts[0], [tokenPk]);
-        let txId = (await tx.send());
 
         let tx3 = await Mina.transaction({sender: accounts[0].toPublicKey(), fee: context.defaultFee}, () => {
             AccountUpdate.fundNewAccount(
@@ -243,15 +212,16 @@ describe('lending - e2e', () => {
                 1
             ).requireSignature();
 
+            let tokenAu = AccountUpdate.createSigned(accounts[0].toPublicKey(), token.token.id)
+            tokenAu.balance.subInPlace(amount)
+
             lender.addLiquidity(
+                tokenAu,
                 token.address,
-                amount,
-                new ValuedMerkleTreeWitness({
-                    witness,
-                    value: amount.value,
-                })
+                amount
             );
             if (!context.proofs) {
+                tokenAu.requireSignature();
                 lender.requireSignature();
                 lender.self.children.accountUpdates.forEach((x) =>
                     x.requireSignature()
@@ -259,8 +229,7 @@ describe('lending - e2e', () => {
             }
         });
         await context.signOrProve(tx3, accounts[0], [lenderPk, tokenPk]);
-        // tx3.transaction.accountUpdates.forEach((au) => console.log(au.toJSON()));
-        await txId.wait()
+
         await (await tx3.send()).wait();
 
         let state = (await context.getAccount(lender.address)).zkapp?.appState ?? [];

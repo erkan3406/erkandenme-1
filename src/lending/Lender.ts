@@ -103,9 +103,10 @@ export class Lender extends SmartContract {
 
     @method
     addLiquidity(
+        parentUpdate: AccountUpdate,
         tokenAddress: PublicKey,
         amount: UInt64,
-        approvalWitness: ValuedMerkleTreeWitness
+        // approvalWitness: ValuedMerkleTreeWitness
         // liquidityWitness: ValuedMerkleMapWitness,
         // tokenLiquidityWitness: MerkleMapWitness,
         // currentTokenLiquidity: Field
@@ -118,14 +119,15 @@ export class Lender extends SmartContract {
         Circuit.log("addLiquidity sender:", sender)
 
         let token = new LendableToken(tokenAddress);
-        let success = token.transferFrom(
-            sender,
-            this.address,
-            amount,
-            approvalWitness.witness,
-            UInt64.from(approvalWitness.value)
-        );
-        success.assertTrue('transferFrom not successful');
+        // let success = token.transferFrom(
+        //     sender,
+        //     this.address,
+        //     amount,
+        //     approvalWitness.witness,
+        //     UInt64.from(approvalWitness.value)
+        // );
+        // success.assertTrue('transferFrom not successful');
+        token.approveUpdateAndSend(parentUpdate, this.address, amount)
 
         //TODO Lock tokens?
 

@@ -39,6 +39,13 @@ type DeployVK = { data: string; hash: string | Field };
 
 let vkCache: { [key: string]: DeployVK } = {};
 
+/**
+ * Generates a new TestContext which includes all reusable functions which a Mina test will use.
+ * It checks for two environement-variables
+ * TEST_ON_BERKELEY
+ * TEST_WITH_PROOFS
+ * to turn berkeley deployment and proof generation on and off.
+ */
 export function getTestContext(): TestContext {
   let deployToBerkeley = process.env.TEST_ON_BERKELEY === 'true' ?? false;
   let proofs = process.env.TEST_WITH_PROOFS === 'true' ?? false;
