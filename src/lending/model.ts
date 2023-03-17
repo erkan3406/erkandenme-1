@@ -9,7 +9,7 @@ import {
     Struct,
     UInt64,
 } from 'snarkyjs';
-import {structArrayToFields} from '../utils';
+import { structArrayToFields } from '../utils';
 //
 // export class TokenStats extends Struct({
 //
@@ -40,35 +40,30 @@ export class LendingUserInfo extends Struct({
 }
 
 export class LiquidityAddEvent extends Struct({
-    token: PublicKey,
+    tokenId: Field,
     account: PublicKey,
     amount: UInt64,
-}) {
-}
+}) {}
 
 export class BorrowEvent extends Struct({
-    token: PublicKey,
+    tokenId: Field,
     account: PublicKey,
     amount: UInt64,
-}) {
-}
+}) {}
 
 export class UserLiquidityAction extends Struct({
     user: PublicKey,
     token: PublicKey,
     amount: UInt64,
-}) {
-}
+}) {}
 
 export const LENDING_MERKLE_HEIGHT = 255; //10
 
 export class LendingMerkleWitness extends MerkleWitness(
     LENDING_MERKLE_HEIGHT
-) {
-}
+) {}
 
 export class ValuedMerkleTreeWitness extends Struct({
     value: Field,
     witness: LendingMerkleWitness,
-}) {
-}
+}) {}

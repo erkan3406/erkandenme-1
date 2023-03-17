@@ -1,7 +1,8 @@
 import {
     AccountUpdate,
     Circuit,
-    DeployArgs, Experimental,
+    DeployArgs,
+    Experimental,
     Field,
     MerkleTree,
     method,
@@ -16,8 +17,8 @@ import {
     Struct,
     UInt64,
 } from 'snarkyjs';
-import {LendableToken} from './LendableToken';
-import {structArrayToFields} from '../utils';
+import { LendableToken } from './LendableToken';
+import { structArrayToFields } from '../utils';
 import {
     BorrowEvent,
     LENDING_MERKLE_HEIGHT,
@@ -27,17 +28,14 @@ import {
     UserLiquidityAction,
     ValuedMerkleTreeWitness,
 } from './model';
-import {LiquidityActionWitnesses, WitnessService} from "./WitnessService";
-
-
+import { LiquidityActionWitnesses, WitnessService } from './WitnessService';
 
 export const staticWitnessService = new WitnessService();
 
 class LenderLiquidityReducerResult extends Struct({
     liquidityRoot: Field,
     totalCollateral: UInt64,
-}) {
-}
+}) {}
 
 /**
  * This contract is the main contract of the mock-lending protocol.
@@ -54,8 +52,8 @@ export class Lender extends SmartContract {
     @state(Field) latestActionHash = State<Field>();
 
     events = {
-        'liquidity-added': LiquidityAddEvent,
         borrow: BorrowEvent,
+        'liquidity-added': LiquidityAddEvent,
     };
 
     reducer = Reducer({ actionType: UserLiquidityAction });
@@ -73,7 +71,7 @@ export class Lender extends SmartContract {
         address: PublicKey,
         witnessService: WitnessService
     ): Lender {
-        Lender.analyzeMethods()
+        Lender.analyzeMethods();
         let contract = new Lender(address);
         contract.witnessService = witnessService;
         return contract;
@@ -105,29 +103,14 @@ export class Lender extends SmartContract {
     addLiquidity(
         parentUpdate: AccountUpdate,
         tokenAddress: PublicKey,
-        amount: UInt64,
-        // approvalWitness: ValuedMerkleTreeWitness
-        // liquidityWitness: ValuedMerkleMapWitness,
-        // tokenLiquidityWitness: MerkleMapWitness,
-        // currentTokenLiquidity: Field
+        amount: UInt64
     ) {
-        // let liquidityRoot = this.userLiquidityRoot.get()
-        // this.userLiquidityRoot.assertEquals(liquidityRoot)
-
         let sender = this.sender; //So that only one witness is generated
 
-        Circuit.log("addLiquidity sender:", sender)
+        Circuit.log('addLiquidity sender:', sender);
 
         let token = new LendableToken(tokenAddress);
-        // let success = token.transferFrom(
-        //     sender,
-        //     this.address,
-        //     amount,
-        //     approvalWitness.witness,
-        //     UInt64.from(approvalWitness.value)
-        // );
-        // success.assertTrue('transferFrom not successful');
-        token.approveUpdateAndSend(parentUpdate, this.address, amount)
+        token.approveUpdateAndSend(parentUpdate, this.address, amount);
 
         //TODO Lock tokens?
 
@@ -142,7 +125,7 @@ export class Lender extends SmartContract {
         this.emitEvent(
             'liquidity-added',
             new LiquidityAddEvent({
-                token: tokenAddress,
+                tokenId: token.token.id,
                 amount: amount,
                 account: sender,
             })
@@ -151,7 +134,6 @@ export class Lender extends SmartContract {
 
     @method
     rollupLiquidity() {
-
         let latestActionsHash = this.latestActionHash.get();
         this.latestActionHash.assertEquals(latestActionsHash);
 
@@ -173,7 +155,10 @@ export class Lender extends SmartContract {
         let reducerResult = this.reducer.reduce(
             actions,
             LenderLiquidityReducerResult,
-            (state: LenderLiquidityReducerResult, action: UserLiquidityAction) => {
+            (
+                state: LenderLiquidityReducerResult,
+                action: UserLiquidityAction
+            ) => {
                 Circuit.log('Action:', action.user);
 
                 //Generate Witnesses
@@ -184,15 +169,19 @@ export class Lender extends SmartContract {
                     borrowed,
                     totalLiquidity,
                 } = Circuit.witness(LiquidityActionWitnesses, () => {
-                    console.log("Invoke 1")
                     return staticWitnessService.getWitnesses(action);
                 });
 
                 //Check transition
                 witnessToken
                     .calculateIndex()
-                    .assertEquals(action.token.x, 'Token witness index not correct');
-                let tokenRoot = witnessToken.calculateRoot(liquiditySoFar.value);
+                    .assertEquals(
+                        action.token.x,
+                        'Token witness index not correct'
+                    );
+                let tokenRoot = witnessToken.calculateRoot(
+                    liquiditySoFar.value
+                );
 
                 let userInfo = new LendingUserInfo({
                     borrowed,
@@ -202,11 +191,16 @@ export class Lender extends SmartContract {
 
                 witnessUser
                     .calculateIndex()
-                    .assertEquals(action.user.x, 'User witness index not correct');
+                    .assertEquals(
+                        action.user.x,
+                        'User witness index not correct'
+                    );
 
                 Circuit.log('Checkpoint 1B', WitnessService.emptyMerkleRoot);
                 witnessUser
-                    .calculateRoot(userInfo.hash(WitnessService.emptyMerkleRoot))
+                    .calculateRoot(
+                        userInfo.hash(WitnessService.emptyMerkleRoot)
+                    )
                     .assertEquals(
                         state.liquidityRoot,
                         'Liquidity membership check not successful'
@@ -221,15 +215,17 @@ export class Lender extends SmartContract {
                     userInfo.hash(WitnessService.emptyMerkleRoot)
                 );
 
-                let newTotalCollateral = state.totalCollateral.add(action.amount);
+                let newTotalCollateral = state.totalCollateral.add(
+                    action.amount
+                );
 
                 return new LenderLiquidityReducerResult({
                     liquidityRoot: newRoot,
                     totalCollateral: newTotalCollateral,
                 });
             },
-            {state: reducerState, actionsHash: latestActionsHash},
-            {maxTransactionsWithActions: 2}
+            { state: reducerState, actionsHash: latestActionsHash },
+            { maxTransactionsWithActions: 2 }
         );
 
         //Update latestActionHash and liqudityRoot
@@ -284,13 +280,15 @@ export class Lender extends SmartContract {
             );
 
         signature
-            .verify(sender,
+            .verify(
+                sender,
                 structArrayToFields(
                     this.signature_prefixes['borrow'],
                     tokenAddress,
                     amount.value
                 )
-            ).assertTrue('Signature not valid');
+            )
+            .assertTrue('Signature not valid');
 
         witness
             .calculateIndex()
@@ -304,8 +302,12 @@ export class Lender extends SmartContract {
 
         let token = new LendableToken(tokenAddress);
 
-        let au = Experimental.createChildAccountUpdate(this.self, this.address, token.token.id)
-        au.balance.subInPlace(amount)
+        let au = Experimental.createChildAccountUpdate(
+            this.self,
+            this.address,
+            token.token.id
+        );
+        au.balance.subInPlace(amount);
 
         token.approveUpdateAndSend(au, sender, amount);
 
@@ -318,7 +320,7 @@ export class Lender extends SmartContract {
         this.emitEvent(
             'borrow',
             new BorrowEvent({
-                token: tokenAddress,
+                tokenId: token.token.id,
                 account: sender,
                 amount,
             })
