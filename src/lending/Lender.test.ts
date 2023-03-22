@@ -23,7 +23,7 @@ import {
     LiquidityAddEvent,
     ValuedMerkleTreeWitness,
 } from './model';
-import { structArrayToFields, TransactionId } from '../utils';
+import { sleep, structArrayToFields, TransactionId } from '../utils';
 import { Lender, staticWitnessService } from './Lender';
 import {
     EventResponse,
@@ -292,6 +292,7 @@ describe('lending - e2e', () => {
             expect(state[1]).toEqual(Field(0));
 
             //Check emitted LiquidityAddEvent
+            await sleep(4000);
             let events1 = (await Mina.fetchEvents(
                 lender.address,
                 Field(1)
@@ -409,6 +410,7 @@ describe('lending - e2e', () => {
             );
 
             //Borrow event
+            await sleep(4000);
             let events2 = (await Mina.fetchEvents(lender.address, Field(1), {
                 from: UInt32.from(0),
             })) as EventResponse[];
