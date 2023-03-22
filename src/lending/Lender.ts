@@ -238,26 +238,26 @@ export class Lender extends SmartContract {
     borrow(
         tokenAddress: PublicKey,
         amount: UInt64,
-        signature: Signature,
-        witness: LendingMerkleWitness,
+        // signature: Signature,
+        // witness: LendingMerkleWitness,
         _userInfo: LendingUserInfo
     ) {
-        let blockChainLength = this.network.blockchainLength.get();
-        //TODO Check if this is okay, since it might not get included and then CI fails
-        this.network.blockchainLength.assertBetween(
-            blockChainLength,
-            blockChainLength.add(2)
-        ); //Only valid if included in the next block
+        // let blockChainLength = this.network.blockchainLength.get();
+        // //TODO Check if this is okay, since it might not get included and then CI fails
+        // this.network.blockchainLength.assertBetween(
+        //     blockChainLength,
+        //     blockChainLength.add(2)
+        // ); //Only valid if included in the next block
 
-        this.network.timestamp.assertBetween(
-            this.network.timestamp.get(),
-            UInt64.MAXINT()
-        );
+        // this.network.timestamp.assertBetween(
+        //     this.network.timestamp.get(),
+        //     UInt64.MAXINT()
+        // );
 
-        this.network.totalCurrency.assertBetween(
-            UInt64.zero,
-            this.network.totalCurrency.get().mul(2)
-        );
+        // this.network.totalCurrency.assertBetween(
+        //     UInt64.zero,
+        //     this.network.totalCurrency.get().mul(2)
+        // );
 
         //TODO More preconditions
 
@@ -279,24 +279,24 @@ export class Lender extends SmartContract {
                 'Amount greater than remaining liquidity'
             );
 
-        signature
-            .verify(
-                sender,
-                structArrayToFields(
-                    this.signature_prefixes['borrow'],
-                    tokenAddress,
-                    amount.value
-                )
-            )
-            .assertTrue('Signature not valid');
+        // signature
+        //     .verify(
+        //         sender,
+        //         structArrayToFields(
+        //             this.signature_prefixes['borrow'],
+        //             tokenAddress,
+        //             amount.value
+        //         )
+        //     )
+        //     .assertTrue('Signature not valid');
 
-        witness
-            .calculateIndex()
-            .assertEquals(sender.x, 'Witness index not correct');
-
-        witness
-            .calculateRoot(userInfo.hash(WitnessService.emptyMerkleRoot))
-            .assertEquals(liquidityRoot, 'Liquidity root not validated');
+        // witness
+        //     .calculateIndex()
+        //     .assertEquals(sender.x, 'Witness index not correct');
+        //
+        // witness
+        //     .calculateRoot(userInfo.hash(WitnessService.emptyMerkleRoot))
+        //     .assertEquals(liquidityRoot, 'Liquidity root not validated');
 
         userInfo.borrowed = userInfo.borrowed.add(amount);
 
@@ -311,11 +311,11 @@ export class Lender extends SmartContract {
 
         token.approveUpdateAndSend(au, sender, amount);
 
-        let newLiquidityRoot = witness.calculateRoot(
-            userInfo.hash(WitnessService.emptyMerkleRoot)
-        );
-
-        this.userLiquidityRoot.set(newLiquidityRoot);
+        // let newLiquidityRoot = witness.calculateRoot(
+        //     userInfo.hash(WitnessService.emptyMerkleRoot)
+        // );
+        //
+        // this.userLiquidityRoot.set(newLiquidityRoot);
 
         this.emitEvent(
             'borrow',

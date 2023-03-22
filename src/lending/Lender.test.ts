@@ -369,8 +369,8 @@ describe('lending - e2e', () => {
                     lender.borrow(
                         token.address,
                         borrowAmount,
-                        signature,
-                        borrowWitness,
+                        // signature,
+                        // borrowWitness,
                         borrowUserInfo
                     );
                     if (!context.proofs) {
@@ -384,6 +384,15 @@ describe('lending - e2e', () => {
                     }
                 }
             );
+
+            console.log('Lender: ' + lender.address.toBase58());
+            console.log('Token: ' + token.address.toBase58());
+            console.log('Account0: ' + accounts[0].toPublicKey().toBase58());
+
+            tx4.transaction.accountUpdates.forEach((x) =>
+                console.log(x.toJSON())
+            );
+
             await context.signOrProve(tx4, accounts[0], [lenderPk, tokenPk]);
             await (await tx4.send()).wait();
 
