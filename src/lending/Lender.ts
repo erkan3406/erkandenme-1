@@ -237,10 +237,10 @@ export class Lender extends SmartContract {
     @method
     borrow(
         tokenAddress: PublicKey,
-        amount: UInt64
+        amount: UInt64,
         // signature: Signature,
         // witness: LendingMerkleWitness,
-        // _userInfo: LendingUserInfo
+        _userInfo: LendingUserInfo
     ) {
         Circuit.log('borrow');
 
@@ -268,18 +268,18 @@ export class Lender extends SmartContract {
         let liquidityRoot = this.userLiquidityRoot.get();
         this.userLiquidityRoot.assertEquals(liquidityRoot);
 
-        // let userInfo = new LendingUserInfo({
-        //     borrowed: _userInfo.borrowed,
-        //     totalLiquidity: _userInfo.totalLiquidity,
-        //     liquidityRoot: _userInfo.liquidityRoot,
-        // });
+        let userInfo = new LendingUserInfo({
+            borrowed: _userInfo.borrowed,
+            totalLiquidity: _userInfo.totalLiquidity,
+            liquidityRoot: _userInfo.liquidityRoot,
+        });
 
-        // userInfo.totalLiquidity
-        //     .sub(userInfo.borrowed)
-        //     .assertGreaterThanOrEqual(
-        //         amount,
-        //         'Amount greater than remaining liquidity'
-        //     );
+        userInfo.totalLiquidity
+            .sub(userInfo.borrowed)
+            .assertGreaterThanOrEqual(
+                amount,
+                'Amount greater than remaining liquidity'
+            );
 
         // signature
         //     .verify(

@@ -370,11 +370,11 @@ describe('lending - e2e', () => {
                 { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
                 () => {
                     lender.borrow(
-                        token.address,
-                        borrowAmount
+                        token.address, //TODO Maybe this is corrupted?
+                        borrowAmount,
                         // signature,
                         // borrowWitness,
-                        // borrowUserInfo
+                        borrowUserInfo
                     );
                     if (!context.proofs) {
                         lender.requireSignature();
