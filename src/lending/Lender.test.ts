@@ -323,6 +323,7 @@ describe('lending - e2e', () => {
             );
             expect(lenderTokenAccount.balance).toEqual(amount);
 
+            lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
             //Rollup Liquidity
             let tx2 = await Mina.transaction(
                 { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
@@ -363,6 +364,8 @@ describe('lending - e2e', () => {
                     accounts[0].toPublicKey(),
                     borrowAmount
                 );
+
+            lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
             let tx4 = await Mina.transaction(
                 { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
                 () => {
