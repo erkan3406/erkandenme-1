@@ -365,6 +365,13 @@ describe('lending - e2e', () => {
                     borrowAmount
                 );
 
+            console.log(borrowUserInfo.totalLiquidity.toString());
+            console.log(borrowUserInfo.totalLiquidity);
+            console.log(borrowUserInfo.borrowed);
+            console.log(
+                borrowUserInfo.totalLiquidity.sub(UInt64.from(1)).toString()
+            );
+
             lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
             let tx4 = await Mina.transaction(
                 { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
