@@ -371,10 +371,10 @@ describe('lending - e2e', () => {
                 () => {
                     lender.borrow(
                         token.address,
-                        borrowAmount,
+                        borrowAmount
                         // signature,
                         // borrowWitness,
-                        borrowUserInfo
+                        // borrowUserInfo
                     );
                     if (!context.proofs) {
                         lender.requireSignature();
