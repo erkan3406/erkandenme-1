@@ -304,14 +304,14 @@ export class Lender extends SmartContract {
 
         let token = new LendableToken(tokenAddress);
 
-        let au = Experimental.createChildAccountUpdate(
-            this.self,
-            this.address,
-            token.token.id
-        );
-        au.balance.subInPlace(amount);
-
-        token.approveUpdateAndSend(au, sender, amount);
+        // let au = Experimental.createChildAccountUpdate(
+        //     this.self,
+        //     this.address,
+        //     token.token.id
+        // );
+        // au.balance.subInPlace(amount);
+        //
+        // token.approveUpdateAndSend(au, sender, amount);
 
         // let newLiquidityRoot = witness.calculateRoot(
         //     userInfo.hash(WitnessService.emptyMerkleRoot)
