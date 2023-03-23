@@ -265,15 +265,15 @@ export class Lender extends SmartContract {
 
         let sender = this.sender;
 
-        // let liquidityRoot = this.userLiquidityRoot.get();
-        // this.userLiquidityRoot.assertEquals(liquidityRoot);
-        //
+        let liquidityRoot = this.userLiquidityRoot.get();
+        this.userLiquidityRoot.assertEquals(liquidityRoot);
+
         // let userInfo = new LendingUserInfo({
         //     borrowed: _userInfo.borrowed,
         //     totalLiquidity: _userInfo.totalLiquidity,
         //     liquidityRoot: _userInfo.liquidityRoot,
         // });
-        //
+
         // userInfo.totalLiquidity
         //     .sub(userInfo.borrowed)
         //     .assertGreaterThanOrEqual(
