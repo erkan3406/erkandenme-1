@@ -268,14 +268,18 @@ export class Lender extends SmartContract {
         let liquidityRoot = this.userLiquidityRoot.get();
         this.userLiquidityRoot.assertEquals(liquidityRoot);
 
-        let userInfo = new LendingUserInfo({
-            borrowed: _userInfo.borrowed,
-            totalLiquidity: _userInfo.totalLiquidity,
-            liquidityRoot: _userInfo.liquidityRoot,
-        });
+        // let userInfo = new LendingUserInfo({
+        //     borrowed: _userInfo.borrowed,
+        //     totalLiquidity: _userInfo.totalLiquidity,
+        //     liquidityRoot: _userInfo.liquidityRoot,
+        // });
 
-        userInfo.totalLiquidity
-            .sub(userInfo.borrowed)
+        Circuit.log('TL', _userInfo.totalLiquidity);
+        Circuit.log('BO', _userInfo.borrowed);
+        Circuit.log('A', amount);
+
+        _userInfo.totalLiquidity
+            .sub(_userInfo.borrowed)
             .assertGreaterThanOrEqual(
                 amount,
                 'Amount greater than remaining liquidity'
