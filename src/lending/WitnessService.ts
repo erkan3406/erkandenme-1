@@ -21,9 +21,9 @@ export class WitnessService {
     //raw data
     userLiquidities: {
         [key: string]: {
-            [key: string]: UInt64;
-            borrowed: UInt64;
-            totalLiquidity: UInt64;
+            [key: string]: string;
+            borrowed: string;
+            totalLiquidity: string;
         };
     } = {};
 
@@ -32,8 +32,8 @@ export class WitnessService {
     initUser(pk: string) {
         this.userTokenLiquidity[pk] = new MerkleTree(LENDING_MERKLE_HEIGHT);
         this.userLiquidities[pk] = {
-            borrowed: UInt64.zero,
-            totalLiquidity: UInt64.zero,
+            borrowed: "0",
+            totalLiquidity: "0",
         };
     }
 
@@ -51,15 +51,14 @@ export class WitnessService {
         );
         let userInfo =
             this.userLiquidities[userPk] ??
-            new LendingUserInfo({
-                borrowed: UInt64.zero,
-                totalLiquidity: UInt64.zero,
-                liquidityRoot: WitnessService.emptyMerkleRoot,
-            });
-        let borrowed = UInt64.from(userInfo.borrowed.toString());
-        let totalLiquidity = UInt64.from(userInfo.totalLiquidity.toString());
+            {
+                borrowed: "0",
+                totalLiquidity: "0",
+            };
+        let borrowed = UInt64.from(userInfo.borrowed);
+        let totalLiquidity = UInt64.from(userInfo.totalLiquidity);
         let liquiditySoFar = UInt64.from(
-            (userInfo[action.token.toBase58()] ?? UInt64.zero).toString()
+            (userInfo[action.token.toBase58()] ?? "0")
         );
 
         let witnesses = new LiquidityActionWitnesses({
@@ -86,9 +85,9 @@ export class WitnessService {
                 action.user.x.toBigInt(),
                 result.hash(WitnessService.emptyMerkleRoot)
             );
-            userInfo.totalLiquidity = userInfo.totalLiquidity.add(
+            userInfo.totalLiquidity = UInt64.from(userInfo.totalLiquidity).add(
                 action.amount
-            );
+            ).toString();
         }
 
         return witnesses;
@@ -111,14 +110,13 @@ export class WitnessService {
         });
 
         //Changes
-        userLiquidity.borrowed = userLiquidity.borrowed.add(amount);
+        userLiquidity.borrowed = UInt64.from(userLiquidity.borrowed).add(amount).toString();
         this.userLiquidityMap.setLeaf(
             user.x.toBigInt(),
             new LendingUserInfo({
-                borrowed: userLiquidity.borrowed,
-                totalLiquidity: userLiquidity.totalLiquidity,
-                liquidityRoot:
-                    this.userTokenLiquidity[user.toBase58()].getRoot(),
+                borrowed: UInt64.from(userLiquidity.borrowed),
+                totalLiquidity: UInt64.from(userLiquidity.totalLiquidity),
+                liquidityRoot: this.userTokenLiquidity[user.toBase58()].getRoot(),
             }).hash(WitnessService.emptyMerkleRoot)
         );
 
