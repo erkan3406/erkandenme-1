@@ -56,9 +56,11 @@ export class WitnessService {
                 totalLiquidity: UInt64.zero,
                 liquidityRoot: WitnessService.emptyMerkleRoot,
             });
-        let borrowed = userInfo.borrowed;
-        let totalLiquidity = userInfo.totalLiquidity;
-        let liquiditySoFar = userInfo[action.token.toBase58()] ?? UInt64.zero;
+        let borrowed = UInt64.from(userInfo.borrowed.toString());
+        let totalLiquidity = UInt64.from(userInfo.totalLiquidity.toString());
+        let liquiditySoFar = UInt64.from(
+            (userInfo[action.token.toBase58()] ?? UInt64.zero).toString()
+        );
 
         let witnesses = new LiquidityActionWitnesses({
             witnessToken,
