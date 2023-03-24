@@ -112,7 +112,9 @@ describe('lending - e2e', () => {
     }, EXTENDED_JEST_TIMEOUT);
 
     afterAll(() => {
-        setInterval(shutdown, 0);
+        if (context.proofs) {
+            setInterval(shutdown, 0);
+        }
     });
 
     let tokenPreMint = 1000000000n;
@@ -365,13 +367,6 @@ describe('lending - e2e', () => {
                     borrowAmount
                 );
 
-            console.log(borrowUserInfo.totalLiquidity.toString());
-            console.log(borrowUserInfo.totalLiquidity);
-            console.log(borrowUserInfo.borrowed);
-            console.log(
-                borrowUserInfo.totalLiquidity.sub(UInt64.from(1)).toString()
-            );
-
             lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
             let tx4 = await Mina.transaction(
                 { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
@@ -379,8 +374,8 @@ describe('lending - e2e', () => {
                     lender.borrow(
                         token.address, //TODO Maybe this is corrupted?
                         borrowAmount,
-                        // signature,
-                        // borrowWitness,
+                        signature,
+                        borrowWitness,
                         borrowUserInfo
                     );
                     if (!context.proofs) {
@@ -395,10 +390,6 @@ describe('lending - e2e', () => {
                 }
             );
 
-            console.log('Lender: ' + lender.address.toBase58());
-            console.log('Token: ' + token.address.toBase58());
-            console.log('Account0: ' + accounts[0].toPublicKey().toBase58());
-
             tx4.transaction.accountUpdates.forEach((x) =>
                 console.log(x.toJSON())
             );
@@ -410,10 +401,12 @@ describe('lending - e2e', () => {
                 accounts[0].toPublicKey(),
                 token.token.id
             );
-            expect(borrowAccount0.balance).toEqual(
+
+            expect(borrowAccount0.balance.toString()).toEqual(
                 UInt64.from(LendableToken.INITIAL_MINT)
                     .sub(amount)
                     .add(borrowAmount)
+                    .toString()
             );
 
             let contractAccount1Token = await context.getAccount(
@@ -437,10 +430,12 @@ describe('lending - e2e', () => {
 
             let [index2, ...eventData2] = events2[1].events[0];
             expect(index2).toEqual('0');
+            console.log('7');
             let borrowEvent = BorrowEvent.fromFields(eventData2.map(Field));
             expect(borrowEvent.amount).toEqual(borrowAmount);
             expect(borrowEvent.tokenId).toEqual(token.token.id);
             expect(borrowEvent.account).toEqual(accounts[0].toPublicKey());
+            console.log('8');
         },
         EXTENDED_JEST_TIMEOUT
     );

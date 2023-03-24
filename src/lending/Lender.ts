@@ -238,8 +238,8 @@ export class Lender extends SmartContract {
     borrow(
         tokenAddress: PublicKey,
         amount: UInt64,
-        // signature: Signature,
-        // witness: LendingMerkleWitness,
+        signature: Signature,
+        witness: LendingMerkleWitness,
         _userInfo: LendingUserInfo
     ) {
         Circuit.log('borrow');
@@ -268,60 +268,60 @@ export class Lender extends SmartContract {
         let liquidityRoot = this.userLiquidityRoot.get();
         this.userLiquidityRoot.assertEquals(liquidityRoot);
 
-        // let userInfo = new LendingUserInfo({
-        //     borrowed: _userInfo.borrowed,
-        //     totalLiquidity: _userInfo.totalLiquidity,
-        //     liquidityRoot: _userInfo.liquidityRoot,
-        // });
+        let userInfo = new LendingUserInfo({
+            borrowed: _userInfo.borrowed,
+            totalLiquidity: _userInfo.totalLiquidity,
+            liquidityRoot: _userInfo.liquidityRoot,
+        });
 
         Circuit.log('TL', _userInfo.totalLiquidity);
         Circuit.log('BO', _userInfo.borrowed);
         Circuit.log('A', amount);
 
-        _userInfo.totalLiquidity
-            .sub(_userInfo.borrowed)
+        userInfo.totalLiquidity
+            .sub(userInfo.borrowed)
             .assertGreaterThanOrEqual(
                 amount,
                 'Amount greater than remaining liquidity'
             );
 
-        // signature
-        //     .verify(
-        //         sender,
-        //         structArrayToFields(
-        //             this.signature_prefixes['borrow'],
-        //             tokenAddress,
-        //             amount.value
-        //         )
-        //     )
-        //     .assertTrue('Signature not valid');
+        signature
+            .verify(
+                sender,
+                structArrayToFields(
+                    this.signature_prefixes['borrow'],
+                    tokenAddress,
+                    amount.value
+                )
+            )
+            .assertTrue('Signature not valid');
 
-        // witness
-        //     .calculateIndex()
-        //     .assertEquals(sender.x, 'Witness index not correct');
-        //
-        // witness
-        //     .calculateRoot(userInfo.hash(WitnessService.emptyMerkleRoot))
-        //     .assertEquals(liquidityRoot, 'Liquidity root not validated');
+        witness
+            .calculateIndex()
+            .assertEquals(sender.x, 'Witness index not correct');
 
-        // userInfo.borrowed = userInfo.borrowed.add(amount);
-        //
+        witness
+            .calculateRoot(userInfo.hash(WitnessService.emptyMerkleRoot))
+            .assertEquals(liquidityRoot, 'Liquidity root not validated');
+
+        userInfo.borrowed = userInfo.borrowed.add(amount);
+
         let token = new LendableToken(tokenAddress);
 
-        // let au = Experimental.createChildAccountUpdate(
-        //     this.self,
-        //     this.address,
-        //     token.token.id
-        // );
-        // au.balance.subInPlace(amount);
-        //
-        // token.approveUpdateAndSend(au, sender, amount);
+        let au = Experimental.createChildAccountUpdate(
+            this.self,
+            this.address,
+            token.token.id
+        );
+        au.balance.subInPlace(amount);
 
-        // let newLiquidityRoot = witness.calculateRoot(
-        //     userInfo.hash(WitnessService.emptyMerkleRoot)
-        // );
-        //
-        // this.userLiquidityRoot.set(newLiquidityRoot);
+        token.approveUpdateAndSend(au, sender, amount);
+
+        let newLiquidityRoot = witness.calculateRoot(
+            userInfo.hash(WitnessService.emptyMerkleRoot)
+        );
+
+        this.userLiquidityRoot.set(newLiquidityRoot);
 
         this.emitEvent(
             'borrow',
