@@ -112,9 +112,7 @@ describe('lending - e2e', () => {
     }, EXTENDED_JEST_TIMEOUT);
 
     afterAll(() => {
-        if (context.proofs) {
-            setInterval(shutdown, 0);
-        }
+        setInterval(shutdown, 400);
     });
 
     let tokenPreMint = 1000000000n;
