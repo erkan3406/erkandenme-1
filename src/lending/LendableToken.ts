@@ -3,6 +3,7 @@ import {
     Bool,
     Circuit,
     DeployArgs,
+    Experimental,
     Field,
     Int64,
     MerkleMapWitness,
@@ -20,19 +21,17 @@ import {
     Types,
     UInt64,
 } from 'snarkyjs';
-import {MerkleMapUtils, structArrayToFields} from '../utils';
-import {LENDING_MERKLE_HEIGHT, LendingMerkleWitness} from './model';
+import { MerkleMapUtils, structArrayToFields } from '../utils';
+import { LENDING_MERKLE_HEIGHT, LendingMerkleWitness } from './model';
 
 export class TokenUserEvent extends Struct({
     sender: PublicKey,
     receiver: PublicKey,
     amount: UInt64,
-}) {
-}
+}) {}
 
 export class LendableToken extends SmartContract {
-
-    static INITIAL_MINT = 1000000000
+    static INITIAL_MINT = 1000000000;
 
     @state(UInt64) totalAmountInCirculation = State<UInt64>();
     @state(Field) approvalRoot = State<Field>();
@@ -90,6 +89,28 @@ export class LendableToken extends SmartContract {
         );
     }
 
+    @method approveTransferCallback(
+        callback: Experimental.Callback<any>,
+        receiverAddress: PublicKey,
+        amount: UInt64
+    ) {
+        const layout = AccountUpdate.Layout.AnyChildren;
+
+        const approvedAccountUpdate = this.approve(callback, layout);
+
+        // const balanceChange = Int64.fromObject(
+        //     approvedAccountUpdate.body.balanceChange
+        // );
+        // approvedAccountUpdate.children.accountUpdates[0]
+        // balanceChange.isPositive().assertFalse("Callback has to have negative sign")
+        // balanceChange.magnitude.equals(amount).assertTrue("Callback not funding mint enough");
+
+        this.token.mint({
+            address: receiverAddress,
+            amount: amount,
+        });
+    }
+
     //Copied from snarkyjs/examples/dex.ts
     @method approveUpdateAndSend(
         zkappUpdate: AccountUpdate,
@@ -112,7 +133,7 @@ export class LendableToken extends SmartContract {
         let balanceChange = Int64.fromObject(zkappUpdate.body.balanceChange);
         balanceChange.assertEquals(Int64.from(amount).neg());
         // add same amount of tokens to the receiving address
-        this.token.mint({address: to, amount});
+        this.token.mint({ address: to, amount });
     }
 
     @method getBalance(publicKey: PublicKey): UInt64 {
@@ -153,6 +174,7 @@ export class LendableToken extends SmartContract {
         );
     }
 
+    /*
     @method approveTokens(
         senderAddress: PublicKey,
         senderSignature: Signature,
@@ -195,7 +217,7 @@ export class LendableToken extends SmartContract {
                 amount,
             })
         );
-    }
+    }*/
 
     /**
      * @param from
@@ -205,7 +227,7 @@ export class LendableToken extends SmartContract {
      * @param approvalAmount
      * @return Bool whether the requested amount has been transferred
      */
-    @method transferFrom(
+    /*@method transferFrom(
         from: PublicKey,
         to: PublicKey,
         amount: UInt64,
@@ -248,7 +270,7 @@ export class LendableToken extends SmartContract {
         );
 
         return amountTransferring.equals(amount);
-    }
+    }*/
 
     // @method mint(
     //     receiverAddress: PublicKey,

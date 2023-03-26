@@ -369,12 +369,20 @@ describe('lending - e2e', () => {
             let tx4 = await Mina.transaction(
                 { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
                 () => {
+                    // let approveSendingCallback = Experimental.Callback.create(
+                    //     lender,
+                    //     'approveSend',
+                    //     [borrowAmount, token.token.id]
+                    // );
+                    // approveSendingCallback.accountUpdate.tokenId = token.token.id
+
                     lender.borrow(
                         token.address, //TODO Maybe this is corrupted?
                         borrowAmount,
                         signature,
                         borrowWitness,
                         borrowUserInfo
+                        // approveSendingCallback
                     );
                     if (!context.proofs) {
                         lender.requireSignature();
@@ -387,6 +395,8 @@ describe('lending - e2e', () => {
                     }
                 }
             );
+
+            console.log(tx4.toPretty());
 
             tx4.transaction.accountUpdates.forEach((x) =>
                 console.log(x.toJSON())

@@ -234,6 +234,22 @@ export class Lender extends SmartContract {
         this.latestActionHash.set(reducerResult.actionsHash);
     }
 
+    /*
+     * This method is used to get authorization from the token owner. Remember,
+     * the token owner is the one who created the custom token. To debit their
+     * balance, we must get authorization from the token owner
+     */
+    @method approveSend(amount: UInt64, tokenId: Field) {
+        // this.tokenId
+        //TODO Authorization
+        // let au = Experimental.createChildAccountUpdate(
+        //     this.self,
+        //     this.address,
+        //     tokenId
+        // )
+        this.balance.subInPlace(amount);
+    }
+
     @method
     borrow(
         tokenAddress: PublicKey,
@@ -241,6 +257,7 @@ export class Lender extends SmartContract {
         signature: Signature,
         witness: LendingMerkleWitness,
         _userInfo: LendingUserInfo
+        // approval: Experimental.Callback<any>
     ) {
         Circuit.log('borrow');
 
@@ -315,7 +332,14 @@ export class Lender extends SmartContract {
         );
         au.balance.subInPlace(amount);
 
+        // let approveSendingCallback = Experimental.Callback.create(
+        //     this,
+        //     'approveSend',
+        //     [amount]
+        // );
+
         token.approveUpdateAndSend(au, sender, amount);
+        // token.approveTransferCallback(approval, sender, amount);
 
         let newLiquidityRoot = witness.calculateRoot(
             userInfo.hash(WitnessService.emptyMerkleRoot)
