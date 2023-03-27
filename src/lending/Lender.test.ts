@@ -11,7 +11,7 @@ import {
     Field,
     UInt32,
     MerkleMap,
-    Experimental,
+    Experimental, VerificationKey,
 } from 'snarkyjs';
 import * as fs from 'fs';
 import { LendableToken, TokenUserEvent } from './LendableToken';
@@ -33,6 +33,7 @@ import {
 } from '../JestExtensions';
 import { expect } from '@jest/globals';
 import { WitnessService } from './WitnessService';
+import {LenderTokenHolder} from "./LenderTokenHolder";
 
 describe('lending - e2e', () => {
     let context = getTestContext();
@@ -70,10 +71,13 @@ describe('lending - e2e', () => {
 
     async function deployLender(
         witnessService: WitnessService,
+        tokenPk: PrivateKey,
         nonce?: number
     ): Promise<{ tx: TransactionId; pk: PrivateKey }> {
         let pk = PrivateKey.random();
         let deployArgs = await context.getDeployArgs(pk, Lender);
+
+        let tokenHolderDeployArgs = await context.getDeployArgs(pk, LenderTokenHolder)
 
         let tx = await Mina.transaction(
             {
@@ -82,7 +86,7 @@ describe('lending - e2e', () => {
                 nonce: nonce,
             },
             () => {
-                AccountUpdate.fundNewAccount(accounts[0].toPublicKey(), 1);
+                AccountUpdate.fundNewAccount(accounts[0].toPublicKey(), 2);
 
                 //AU1
                 let contract = Lender.getInstance(
@@ -90,14 +94,25 @@ describe('lending - e2e', () => {
                     witnessService
                 );
                 contract.deploy(deployArgs);
+
+                let token = new LendableToken(tokenPk.toPublicKey())
+                if(context.proofs){
+                    token.deployZkapp(pk.toPublicKey(), LenderTokenHolder._verificationKey!)
+                }else{
+                    token.deployZkappSignature(pk.toPublicKey())
+                    token.requireSignature()
+                }
+                // let tokenHolder = new LenderTokenHolder(pk.toPublicKey(), token.token.id)
+                // tokenHolder.deploy(tokenHolderDeployArgs)
             }
         );
-        await context.signOrProve(tx, accounts[0], [accounts[0], pk]);
+        await context.signOrProve(tx, accounts[0], [accounts[0], pk, tokenPk]);
 
         console.log('Deploying Lender to ' + pk.toPublicKey().toBase58());
 
         return { tx: await tx.send(), pk };
     }
+
 
     beforeAll(async () => {
         await context.before();
@@ -239,28 +254,30 @@ describe('lending - e2e', () => {
             //Deploy a test token
             let tokenDeployResult = await deployNewToken('LT1');
             let tokenPk = tokenDeployResult.pk;
+            let token = new LendableToken(tokenPk.toPublicKey());
 
             let lenderDeployResult = await deployLender(
                 witnessService,
+                tokenPk,
                 startingNonce + 1
             );
             let lenderPk = lenderDeployResult.pk;
 
-            let token = new LendableToken(tokenPk.toPublicKey());
             let lender = Lender.getInstance(
                 lenderPk.toPublicKey(),
                 witnessService
             );
+            let tokenHolder = new LenderTokenHolder(lenderPk.toPublicKey(), token.token.id)
 
             let amount = UInt64.from(10000);
 
             let tx3 = await Mina.transaction(
                 { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
                 () => {
-                    AccountUpdate.fundNewAccount(
-                        accounts[0].toPublicKey(),
-                        1
-                    ).requireSignature();
+                    // AccountUpdate.fundNewAccount(
+                    //     accounts[0].toPublicKey(),
+                    //     1
+                    // ).requireSignature();
 
                     let tokenAu = AccountUpdate.createSigned(
                         accounts[0].toPublicKey(),
@@ -370,27 +387,31 @@ describe('lending - e2e', () => {
                 { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
                 () => {
                     // let approveSendingCallback = Experimental.Callback.create(
-                    //     lender,
+                    //     tokenHolder,
                     //     'approveSend',
-                    //     [borrowAmount, token.token.id]
+                    //     [borrowAmount]
                     // );
                     // approveSendingCallback.accountUpdate.tokenId = token.token.id
 
                     lender.borrow(
-                        token.address, //TODO Maybe this is corrupted?
+                        token.address,
+                        token.token.id,
                         borrowAmount,
                         signature,
                         borrowWitness,
-                        borrowUserInfo
+                        borrowUserInfo,
                         // approveSendingCallback
                     );
                     if (!context.proofs) {
                         lender.requireSignature();
                         lender.self.children.accountUpdates.forEach((x) => {
                             x.requireSignature();
-                            x.children.accountUpdates.forEach((y) =>
+                            x.children.accountUpdates.forEach((y) => {
                                 y.requireSignature()
-                            );
+                                y.children.accountUpdates.forEach((z) =>
+                                    z.requireSignature()
+                                );
+                            });
                         });
                     }
                 }

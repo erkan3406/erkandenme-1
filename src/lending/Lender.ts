@@ -29,6 +29,7 @@ import {
     ValuedMerkleTreeWitness,
 } from './model';
 import { LiquidityActionWitnesses, WitnessService } from './WitnessService';
+import {LenderTokenHolder} from "./LenderTokenHolder";
 
 export const staticWitnessService = new WitnessService();
 
@@ -102,12 +103,17 @@ export class Lender extends SmartContract {
     @method
     addLiquidity(
         parentUpdate: AccountUpdate,
+        // tokenId: Field,
         tokenAddress: PublicKey,
         amount: UInt64
     ) {
         let sender = this.sender; //So that only one witness is generated
 
         Circuit.log('addLiquidity sender:', sender);
+
+        //TODO Move that logic into LenderTokenHolder
+        // let tokenHolder = new LenderTokenHolder(this.address, tokenId)
+        // tokenHolder.addLiquidity(parentUpdate, tokenAddress, amount)
 
         let token = new LendableToken(tokenAddress);
         token.approveUpdateAndSend(parentUpdate, this.address, amount);
@@ -234,29 +240,15 @@ export class Lender extends SmartContract {
         this.latestActionHash.set(reducerResult.actionsHash);
     }
 
-    /*
-     * This method is used to get authorization from the token owner. Remember,
-     * the token owner is the one who created the custom token. To debit their
-     * balance, we must get authorization from the token owner
-     */
-    @method approveSend(amount: UInt64, tokenId: Field) {
-        // this.tokenId
-        //TODO Authorization
-        // let au = Experimental.createChildAccountUpdate(
-        //     this.self,
-        //     this.address,
-        //     tokenId
-        // )
-        this.balance.subInPlace(amount);
-    }
 
     @method
     borrow(
         tokenAddress: PublicKey,
+        tokenId: Field,
         amount: UInt64,
         signature: Signature,
         witness: LendingMerkleWitness,
-        _userInfo: LendingUserInfo
+        _userInfo: LendingUserInfo,
         // approval: Experimental.Callback<any>
     ) {
         Circuit.log('borrow');
@@ -323,14 +315,25 @@ export class Lender extends SmartContract {
 
         userInfo.borrowed = userInfo.borrowed.add(amount);
 
-        let token = new LendableToken(tokenAddress);
+        // let token = new LendableToken(tokenAddress);
+        let tokenHolder = new LenderTokenHolder(this.address, tokenId)
+        tokenHolder.borrow(
+            // approval,
+            // tokenAddress,
+            // sender,
+            amount
+        )
 
-        let au = Experimental.createChildAccountUpdate(
-            this.self,
-            this.address,
-            token.token.id
-        );
-        au.balance.subInPlace(amount);
+        let token = new LendableToken(tokenAddress)
+
+        token.approveUpdateAndSend(tokenHolder.self, sender, amount)
+
+        // let au = Experimental.createChildAccountUpdate(
+        //     this.self,
+        //     this.address,
+        //     token.token.id
+        // );
+        // au.balance.subInPlace(amount);
 
         // let approveSendingCallback = Experimental.Callback.create(
         //     this,
@@ -338,7 +341,7 @@ export class Lender extends SmartContract {
         //     [amount]
         // );
 
-        token.approveUpdateAndSend(au, sender, amount);
+        // token.approveUpdateAndSend(au, sender, amount);
         // token.approveTransferCallback(approval, sender, amount);
 
         let newLiquidityRoot = witness.calculateRoot(
@@ -350,7 +353,7 @@ export class Lender extends SmartContract {
         this.emitEvent(
             'borrow',
             new BorrowEvent({
-                tokenId: token.token.id,
+                tokenId: tokenId,
                 account: sender,
                 amount,
             })

@@ -1,6 +1,5 @@
 import {
     AccountUpdate,
-    Bool,
     Circuit,
     DeployArgs,
     Experimental,
@@ -19,10 +18,11 @@ import {
     state,
     Struct,
     Types,
-    UInt64,
+    UInt64, VerificationKey,
 } from 'snarkyjs';
 import { MerkleMapUtils, structArrayToFields } from '../utils';
 import { LENDING_MERKLE_HEIGHT, LendingMerkleWitness } from './model';
+import {Permission} from "snarkyjs/dist/web/lib/account_update";
 
 export class TokenUserEvent extends Struct({
     sender: PublicKey,
@@ -172,6 +172,30 @@ export class LendableToken extends SmartContract {
                 amount,
             })
         );
+    }
+
+    private doDeployZkapp(address: PublicKey, proof: boolean) : AccountUpdate{
+        let tokenId = this.token.id;
+        let zkapp = AccountUpdate.create(address, tokenId);
+        zkapp.account.permissions.set({
+            ...Permissions.default(),
+            editState: proof ? Permissions.proof() : Permissions.signature(),
+            send: proof ? Permissions.proof() : Permissions.signature(),
+            receive: Permissions.none(),
+            incrementNonce: proof ? Permissions.proof() : Permissions.signature()
+        });
+        return zkapp
+    }
+
+    @method deployZkapp(address: PublicKey, verificationKey: VerificationKey) {
+        let zkapp = this.doDeployZkapp(address, true)
+        zkapp.account.verificationKey.set(verificationKey);
+        zkapp.requireSignature();
+    }
+
+    @method deployZkappSignature(address: PublicKey) {
+        let zkapp = this.doDeployZkapp(address, false)
+        zkapp.requireSignature();
     }
 
     /*
