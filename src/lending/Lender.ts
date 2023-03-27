@@ -323,10 +323,9 @@ export class Lender extends SmartContract {
             // sender,
             amount
         )
-        //
-        // let token = new LendableToken(tokenAddress)
-        //
-        // token.approveUpdateAndSend(tokenHolder.self, sender, amount)
+
+        let token = new LendableToken(tokenAddress)
+        token.approveUpdateAndSend(tokenHolder.self, sender, amount)
 
         // let au = Experimental.createChildAccountUpdate(
         //     this.self,

@@ -28,7 +28,7 @@ export class LenderTokenHolder extends SmartContract{
 
         this.balance.subInPlace(amount)
 
-        this.self.body.mayUseToken = AccountUpdate.MayUseToken.ParentsOwnToken;
+        // this.self.body.mayUseToken = AccountUpdate.MayUseToken.ParentsOwnToken;
 
         // let token = new LendableToken(tokenAddress)
         // token.token.id.assertEquals(this.self.tokenId)

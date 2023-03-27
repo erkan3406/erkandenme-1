@@ -421,9 +421,9 @@ describe('lending - e2e', () => {
 
                 console.log(tx4.toPretty());
 
-                tx4.transaction.accountUpdates.forEach((x) =>
-                    console.log(x.toJSON())
-                );
+                // tx4.transaction.accountUpdates.forEach((x) =>
+                //     console.log(x.toJSON())
+                // );
 
                 await context.signOrProve(tx4, accounts[0], [lenderPk, tokenPk]);
                 await (await tx4.send()).wait();
