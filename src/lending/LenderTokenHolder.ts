@@ -24,7 +24,7 @@ export class LenderTokenHolder extends SmartContract{
     ){
         //TODO Potentially everybody can call this method without checks
 
-        this.self.parent!.publicKey.assertEquals(this.address) //Only callable from self
+        // this.self.parent!.publicKey.assertEquals(this.address) //Only callable from self
 
         this.balance.subInPlace(amount)
 
