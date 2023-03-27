@@ -75,9 +75,10 @@ describe('lending - e2e', () => {
         nonce?: number
     ): Promise<{ tx: TransactionId; pk: PrivateKey }> {
         let pk = PrivateKey.random();
-        let deployArgs = await context.getDeployArgs(pk, Lender);
 
         let tokenHolderDeployArgs = await context.getDeployArgs(pk, LenderTokenHolder)
+
+        let deployArgs = await context.getDeployArgs(pk, Lender);
 
         let tx = await Mina.transaction(
             {

@@ -1,5 +1,4 @@
-import {AccountUpdate, Experimental, Field, method, PublicKey, SmartContract, State, state, UInt64} from "snarkyjs";
-import {LendableToken} from "./LendableToken";
+import {AccountUpdate, method, SmartContract, UInt64} from "snarkyjs";
 
 export class LenderTokenHolder extends SmartContract{
 
