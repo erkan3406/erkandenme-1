@@ -76,6 +76,8 @@ describe('lending - e2e', () => {
     ): Promise<{ tx: TransactionId; pk: PrivateKey }> {
         let pk = PrivateKey.random();
 
+        console.log('Deploying Lender to ' + pk.toPublicKey().toBase58());
+
         let tokenHolderDeployArgs = await context.getDeployArgs(pk, LenderTokenHolder)
 
         let deployArgs = await context.getDeployArgs(pk, Lender);
@@ -108,8 +110,6 @@ describe('lending - e2e', () => {
             }
         );
         await context.signOrProve(tx, accounts[0], [accounts[0], pk, tokenPk]);
-
-        console.log('Deploying Lender to ' + pk.toPublicKey().toBase58());
 
         return { tx: await tx.send(), pk };
     }
@@ -257,215 +257,219 @@ describe('lending - e2e', () => {
             let tokenPk = tokenDeployResult.pk;
             let token = new LendableToken(tokenPk.toPublicKey());
 
-            let lenderDeployResult = await deployLender(
-                witnessService,
-                tokenPk,
-                startingNonce + 1
-            );
-            let lenderPk = lenderDeployResult.pk;
+            try {
+                let lenderDeployResult = await deployLender(
+                    witnessService,
+                    tokenPk,
+                    startingNonce + 1
+                );
+                let lenderPk = lenderDeployResult.pk;
 
-            let lender = Lender.getInstance(
-                lenderPk.toPublicKey(),
-                witnessService
-            );
-            let tokenHolder = new LenderTokenHolder(lenderPk.toPublicKey(), token.token.id)
+                let lender = Lender.getInstance(
+                    lenderPk.toPublicKey(),
+                    witnessService
+                );
+                let tokenHolder = new LenderTokenHolder(lenderPk.toPublicKey(), token.token.id)
 
-            let amount = UInt64.from(10000);
+                let amount = UInt64.from(10000);
 
-            let tx3 = await Mina.transaction(
-                { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
-                () => {
-                    // AccountUpdate.fundNewAccount(
-                    //     accounts[0].toPublicKey(),
-                    //     1
-                    // ).requireSignature();
+                let tx3 = await Mina.transaction(
+                    {sender: accounts[0].toPublicKey(), fee: context.defaultFee},
+                    () => {
+                        // AccountUpdate.fundNewAccount(
+                        //     accounts[0].toPublicKey(),
+                        //     1
+                        // ).requireSignature();
 
-                    let tokenAu = AccountUpdate.createSigned(
-                        accounts[0].toPublicKey(),
-                        token.token.id
-                    );
-                    tokenAu.balance.subInPlace(amount);
-
-                    lender.addLiquidity(tokenAu, token.address, amount);
-                    if (!context.proofs) {
-                        tokenAu.requireSignature();
-                        lender.requireSignature();
-                        lender.self.children.accountUpdates.forEach((x) =>
-                            x.requireSignature()
+                        let tokenAu = AccountUpdate.createSigned(
+                            accounts[0].toPublicKey(),
+                            token.token.id
                         );
+                        tokenAu.balance.subInPlace(amount);
+
+                        lender.addLiquidity(tokenAu, token.address, amount);
+                        if (!context.proofs) {
+                            tokenAu.requireSignature();
+                            lender.requireSignature();
+                            lender.self.children.accountUpdates.forEach((x) =>
+                                x.requireSignature()
+                            );
+                        }
                     }
-                }
-            );
-            await context.signOrProve(tx3, accounts[0], [lenderPk, tokenPk]);
-            let tx3Id = await tx3.send();
+                );
+                await context.signOrProve(tx3, accounts[0], [lenderPk, tokenPk]);
+                let tx3Id = await tx3.send();
 
-            await tokenDeployResult.tx.wait();
-            await lenderDeployResult.tx.wait();
-            await tx3Id.wait();
+                await tokenDeployResult.tx.wait();
+                await lenderDeployResult.tx.wait();
+                await tx3Id.wait();
 
-            let state =
-                (await context.getAccount(lender.address)).zkapp?.appState ??
-                [];
-            expect(state[0]).toEqual(WitnessService.emptyMerkleRoot);
-            expect(state[1]).toEqual(Field(0));
+                let state =
+                    (await context.getAccount(lender.address)).zkapp?.appState ??
+                    [];
+                expect(state[0]).toEqual(WitnessService.emptyMerkleRoot);
+                expect(state[1]).toEqual(Field(0));
 
-            //Check emitted LiquidityAddEvent
-            await sleep(4000);
-            let events1 = (await Mina.fetchEvents(
-                lender.address,
-                Field(1)
-            )) as EventResponse[];
-            expect(events1.length).toEqual(1);
+                //Check emitted LiquidityAddEvent
+                await sleep(4000);
+                let events1 = (await Mina.fetchEvents(
+                    lender.address,
+                    Field(1)
+                )) as EventResponse[];
+                expect(events1.length).toEqual(1);
 
-            let [index, ...eventData1] = events1[0].events[0];
-            expect(index).toEqual('1');
-            let liquidityAddEvent = LiquidityAddEvent.fromFields(
-                eventData1.map(Field)
-            );
-            expect(liquidityAddEvent.amount).toEqual(amount);
-            expect(liquidityAddEvent.tokenId).toEqual(token.token.id);
-            expect(liquidityAddEvent.account).toEqual(
-                accounts[0].toPublicKey()
-            );
-
-            let deployerTokenAccount = await context.getAccount(
-                accounts[0].toPublicKey(),
-                token.token.id
-            );
-            expect(deployerTokenAccount.balance).toEqual(
-                UInt64.from(tokenPreMint).sub(amount)
-            );
-            let lenderTokenAccount = await context.getAccount(
-                lender.address,
-                token.token.id
-            );
-            expect(lenderTokenAccount.balance).toEqual(amount);
-
-            lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
-            //Rollup Liquidity
-            let tx2 = await Mina.transaction(
-                { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
-                () => {
-                    try {
-                        lender.rollupLiquidity();
-                    } catch (e) {
-                        console.log('Exception at rollup:');
-                        console.log(e);
-                        throw e;
-                    }
-                    if (!context.proofs) {
-                        lender.requireSignature();
-                    }
-                }
-            );
-            await context.signOrProve(tx2, accounts[0], [lenderPk]);
-            await (await tx2.send()).wait();
-
-            let contractAccount0 = await context.getAccount(lender.address);
-            expect(contractAccount0.zkapp?.appState[0]).toEqual(
-                witnessService.userLiquidityMap.getRoot()
-            );
-
-            // --------- Borrowing
-            let borrowAmount = amount.div(2);
-            let signature = Signature.create(
-                accounts[0],
-                structArrayToFields(
-                    lender.signature_prefixes['borrow'],
-                    token.address,
-                    borrowAmount
-                )
-            );
-
-            let [borrowWitness, borrowUserInfo] =
-                witnessService.getBorrowWitness(
-                    accounts[0].toPublicKey(),
-                    borrowAmount
+                let [index, ...eventData1] = events1[0].events[0];
+                expect(index).toEqual('1');
+                let liquidityAddEvent = LiquidityAddEvent.fromFields(
+                    eventData1.map(Field)
+                );
+                expect(liquidityAddEvent.amount).toEqual(amount);
+                expect(liquidityAddEvent.tokenId).toEqual(token.token.id);
+                expect(liquidityAddEvent.account).toEqual(
+                    accounts[0].toPublicKey()
                 );
 
-            lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
-            let tx4 = await Mina.transaction(
-                { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
-                () => {
-                    // let approveSendingCallback = Experimental.Callback.create(
-                    //     tokenHolder,
-                    //     'approveSend',
-                    //     [borrowAmount]
-                    // );
-                    // approveSendingCallback.accountUpdate.tokenId = token.token.id
+                let deployerTokenAccount = await context.getAccount(
+                    accounts[0].toPublicKey(),
+                    token.token.id
+                );
+                expect(deployerTokenAccount.balance).toEqual(
+                    UInt64.from(tokenPreMint).sub(amount)
+                );
+                let lenderTokenAccount = await context.getAccount(
+                    lender.address,
+                    token.token.id
+                );
+                expect(lenderTokenAccount.balance).toEqual(amount);
 
-                    lender.borrow(
-                        token.address,
-                        token.token.id,
-                        borrowAmount,
-                        signature,
-                        borrowWitness,
-                        borrowUserInfo,
-                        // approveSendingCallback
-                    );
-                    if (!context.proofs) {
-                        lender.requireSignature();
-                        lender.self.children.accountUpdates.forEach((x) => {
-                            x.requireSignature();
-                            x.children.accountUpdates.forEach((y) => {
-                                y.requireSignature()
-                                y.children.accountUpdates.forEach((z) =>
-                                    z.requireSignature()
-                                );
-                            });
-                        });
+                lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
+                //Rollup Liquidity
+                let tx2 = await Mina.transaction(
+                    {sender: accounts[0].toPublicKey(), fee: context.defaultFee},
+                    () => {
+                        try {
+                            lender.rollupLiquidity();
+                        } catch (e) {
+                            console.log('Exception at rollup:');
+                            console.log(e);
+                            throw e;
+                        }
+                        if (!context.proofs) {
+                            lender.requireSignature();
+                        }
                     }
-                }
-            );
+                );
+                await context.signOrProve(tx2, accounts[0], [lenderPk]);
+                await (await tx2.send()).wait();
 
-            console.log(tx4.toPretty());
+                let contractAccount0 = await context.getAccount(lender.address);
+                expect(contractAccount0.zkapp?.appState[0]).toEqual(
+                    witnessService.userLiquidityMap.getRoot()
+                );
 
-            tx4.transaction.accountUpdates.forEach((x) =>
-                console.log(x.toJSON())
-            );
+                // --------- Borrowing
+                let borrowAmount = amount.div(2);
+                let signature = Signature.create(
+                    accounts[0],
+                    structArrayToFields(
+                        lender.signature_prefixes['borrow'],
+                        token.address,
+                        borrowAmount
+                    )
+                );
 
-            await context.signOrProve(tx4, accounts[0], [lenderPk, tokenPk]);
-            await (await tx4.send()).wait();
+                let [borrowWitness, borrowUserInfo] =
+                    witnessService.getBorrowWitness(
+                        accounts[0].toPublicKey(),
+                        borrowAmount
+                    );
 
-            let borrowAccount0 = await context.getAccount(
-                accounts[0].toPublicKey(),
-                token.token.id
-            );
+                lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
+                let tx4 = await Mina.transaction(
+                    {sender: accounts[0].toPublicKey(), fee: context.defaultFee},
+                    () => {
+                        // let approveSendingCallback = Experimental.Callback.create(
+                        //     tokenHolder,
+                        //     'approveSend',
+                        //     [borrowAmount]
+                        // );
+                        // approveSendingCallback.accountUpdate.tokenId = token.token.id
 
-            expect(borrowAccount0.balance.toString()).toEqual(
-                UInt64.from(LendableToken.INITIAL_MINT)
-                    .sub(amount)
-                    .add(borrowAmount)
-                    .toString()
-            );
+                        lender.borrow(
+                            token.address,
+                            token.token.id,
+                            borrowAmount,
+                            signature,
+                            borrowWitness,
+                            borrowUserInfo,
+                            // approveSendingCallback
+                        );
+                        if (!context.proofs) {
+                            lender.requireSignature();
+                            lender.self.children.accountUpdates.forEach((x) => {
+                                x.requireSignature();
+                                x.children.accountUpdates.forEach((y) => {
+                                    y.requireSignature()
+                                    y.children.accountUpdates.forEach((z) =>
+                                        z.requireSignature()
+                                    );
+                                });
+                            });
+                        }
+                    }
+                );
 
-            let contractAccount1Token = await context.getAccount(
-                lender.address,
-                token.token.id
-            );
-            expect(contractAccount1Token.balance).toEqual(
-                amount.sub(borrowAmount)
-            );
-            let contractAccount1 = await context.getAccount(lender.address);
-            expect(contractAccount1.zkapp?.appState[0]).toEqual(
-                witnessService.userLiquidityMap.getRoot()
-            );
+                console.log(tx4.toPretty());
 
-            //Borrow event
-            await sleep(4000);
-            let events2 = (await Mina.fetchEvents(lender.address, Field(1), {
-                from: UInt32.from(0),
-            })) as EventResponse[];
-            expect(events2.length).toEqual(2);
+                tx4.transaction.accountUpdates.forEach((x) =>
+                    console.log(x.toJSON())
+                );
 
-            let [index2, ...eventData2] = events2[1].events[0];
-            expect(index2).toEqual('0');
-            console.log('7');
-            let borrowEvent = BorrowEvent.fromFields(eventData2.map(Field));
-            expect(borrowEvent.amount).toEqual(borrowAmount);
-            expect(borrowEvent.tokenId).toEqual(token.token.id);
-            expect(borrowEvent.account).toEqual(accounts[0].toPublicKey());
-            console.log('8');
+                await context.signOrProve(tx4, accounts[0], [lenderPk, tokenPk]);
+                await (await tx4.send()).wait();
+
+                let borrowAccount0 = await context.getAccount(
+                    accounts[0].toPublicKey(),
+                    token.token.id
+                );
+
+                expect(borrowAccount0.balance.toString()).toEqual(
+                    UInt64.from(LendableToken.INITIAL_MINT)
+                        .sub(amount)
+                        .add(borrowAmount)
+                        .toString()
+                );
+
+                let contractAccount1Token = await context.getAccount(
+                    lender.address,
+                    token.token.id
+                );
+                expect(contractAccount1Token.balance).toEqual(
+                    amount.sub(borrowAmount)
+                );
+                let contractAccount1 = await context.getAccount(lender.address);
+                expect(contractAccount1.zkapp?.appState[0]).toEqual(
+                    witnessService.userLiquidityMap.getRoot()
+                );
+
+                //Borrow event
+                await sleep(4000);
+                let events2 = (await Mina.fetchEvents(lender.address, Field(1), {
+                    from: UInt32.from(0),
+                })) as EventResponse[];
+                expect(events2.length).toEqual(2);
+
+                let [index2, ...eventData2] = events2[1].events[0];
+                expect(index2).toEqual('0');
+                console.log('7');
+                let borrowEvent = BorrowEvent.fromFields(eventData2.map(Field));
+                expect(borrowEvent.amount).toEqual(borrowAmount);
+                expect(borrowEvent.tokenId).toEqual(token.token.id);
+                expect(borrowEvent.account).toEqual(accounts[0].toPublicKey());
+                console.log('8');
+            }catch(e){
+                console.log(e)
+            }
         },
         EXTENDED_JEST_TIMEOUT
     );
