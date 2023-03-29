@@ -1,4 +1,4 @@
-import {AccountUpdate, method, SmartContract, UInt64} from "snarkyjs";
+import {AccountUpdate, DeployArgs, method, Permissions, PrivateKey, SmartContract, UInt64} from "snarkyjs";
 
 export class LenderTokenHolder extends SmartContract{
 
@@ -17,9 +17,6 @@ export class LenderTokenHolder extends SmartContract{
 
     @method
     borrow(
-        // approveCallback: Experimental.Callback<any>,
-        // tokenAddress: PublicKey,
-        // reciever: PublicKey,
         amount: UInt64,
     ){
         //TODO Potentially everybody can call this method without checks
@@ -27,25 +24,8 @@ export class LenderTokenHolder extends SmartContract{
         // this.self.parent!.publicKey.assertEquals(this.address) //Only callable from self
 
         this.balance.subInPlace(amount)
-
         // this.self.body.mayUseToken = AccountUpdate.MayUseToken.ParentsOwnToken;
 
-        // let token = new LendableToken(tokenAddress)
-        // token.token.id.assertEquals(this.self.tokenId)
-        //
-        // token.approveTransferCallback(approveCallback, reciever, amount)
-
-    }
-
-    /*
-     * This method is used to get authorization from the token owner. Remember,
-     * the token owner is the one who created the custom token. To debit their
-     * balance, we must get authorization from the token owner
-     */
-    @method approveSend(amount: UInt64) {
-        // this.tokenId
-        //TODO Authorization
-        this.balance.subInPlace(amount);
     }
 
 }

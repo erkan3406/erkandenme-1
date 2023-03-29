@@ -156,7 +156,7 @@ export function getTestContext(): TestContext {
     let fetchEvents = async function<T>(f: () => Promise<T[]>, options: { numBlocks?: number, expectedLength: number }) : Promise<T[]> {
 
         if(!deployToBerkeley){
-            return f()
+            return await f()
         }
 
         let maxBlocks = BigInt((options.numBlocks ?? 3) - 1) //By default, wait for 2 more blocks if the inclusion block fails

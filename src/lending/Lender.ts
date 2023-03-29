@@ -77,10 +77,10 @@ export class Lender extends SmartContract {
         return contract;
     }
 
-    deploy(args: DeployArgs) {
+    customDeploy(args: DeployArgs, proofsEnabled: boolean) {
         super.deploy(args);
 
-        const editPermission = Permissions.proofOrSignature();
+        const editPermission = proofsEnabled ? Permissions.proof() : Permissions.signature();
 
         this.account.permissions.set({
             ...Permissions.default(),
@@ -89,7 +89,6 @@ export class Lender extends SmartContract {
             send: editPermission,
             receive: editPermission,
             editSequenceState: editPermission,
-
         });
     }
 
@@ -312,9 +311,6 @@ export class Lender extends SmartContract {
         // let token = new LendableToken(tokenAddress);
         let tokenHolder = new LenderTokenHolder(this.address, tokenId)
         tokenHolder.borrow(
-            // approval,
-            // tokenAddress,
-            // sender,
             amount
         )
 

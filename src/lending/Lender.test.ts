@@ -95,7 +95,7 @@ describe('lending - e2e', () => {
                     pk.toPublicKey(),
                     witnessService
                 );
-                contract.deploy(deployArgs);
+                contract.customDeploy(deployArgs, context.proofs);
 
                 let token = new LendableToken(tokenPk.toPublicKey())
                 if(context.proofs){
@@ -112,7 +112,6 @@ describe('lending - e2e', () => {
 
         return { tx: await tx.send(), pk, rawTx: tx };
     }
-
 
     beforeAll(async () => {
         await context.before();
@@ -132,10 +131,10 @@ describe('lending - e2e', () => {
 
     let tokenPreMint = 1000000000n;
 
-    it2(
+    it(
         `Basic token functionality - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
         async () => {
-            let deployResult = await deployNewToken('LendingToken1');
+            let deployResult = await deployNewToken('T1');
             await deployResult.tx.wait();
             let tokenPk = deployResult.pk;
             let token = new LendableToken(tokenPk.toPublicKey());
@@ -143,14 +142,17 @@ describe('lending - e2e', () => {
             let tokenAccount = await context.getAccount(token.address);
 
             //Check account state after deployment
-            expect(tokenAccount.tokenSymbol).toEqual('TOKEN1');
+            expect(tokenAccount.tokenSymbol).toEqual('T1');
             expect(tokenAccount.nonce).toEqual(UInt32.from(1));
 
-            expect(tokenAccount.permissions.editState).toEqual(context.editPermission);
-            expect(tokenAccount.permissions.setTokenSymbol).toEqual(Permissions.proofOrSignature());
-            expect(tokenAccount.permissions.send).toEqual(context.editPermission);
-            expect(tokenAccount.permissions.receive).toEqual(context.editPermission);
-            expect(tokenAccount.permissions.editSequenceState).toEqual(context.editPermission);
+            expect(tokenAccount.permissions).toEqual({
+                ...Permissions.default(),
+                editState: context.editPermission,
+                setTokenSymbol: context.editPermission,
+                send: context.editPermission,
+                receive: context.editPermission,
+                editSequenceState: context.editPermission,
+            })
 
             let balance = token.getBalance(accounts[0].toPublicKey());
             expect(balance.toBigInt()).toEqual(tokenPreMint);
@@ -195,7 +197,7 @@ describe('lending - e2e', () => {
             expect(events.length).toEqual(2);
 
             let decodedEvents = events.map((event) => {
-                return event as unknown as TokenUserEvent
+                return event.event as unknown as TokenUserEvent
             });
 
             //Check deploy transfer event
@@ -215,8 +217,7 @@ describe('lending - e2e', () => {
         EXTENDED_JEST_TIMEOUT
     );
 
-    it(
-        `Adding Liquidity - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
+    it2(`Adding liquidity and borrowing - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
         async () => {
             let witnessService = staticWitnessService;
             witnessService.initUser(accounts[0].toPublicKey().toBase58());
@@ -226,7 +227,7 @@ describe('lending - e2e', () => {
             let startingNonce = Number(account.nonce.toBigint());
 
             //Deploy a test token
-            let tokenDeployResult = await deployNewToken('LendingToken1');
+            let tokenDeployResult = await deployNewToken('LT1');
 
             expect(tokenDeployResult.tx.isSuccess).toBeTruthy()
             await context.waitOnTransaction(tokenDeployResult.tx);
@@ -251,6 +252,26 @@ describe('lending - e2e', () => {
                 lenderPk.toPublicKey(),
                 witnessService
             );
+
+            let lenderAccount = Mina.getAccount(lender.address)
+            expect(lenderAccount.permissions).toEqual({
+                ...Permissions.default(),
+                editState: context.editPermission,
+                setTokenSymbol: context.editPermission,
+                send: context.editPermission,
+                receive: context.editPermission,
+                editSequenceState: context.editPermission,
+            })
+
+            let lenderTokenAccount = Mina.getAccount(lender.address, Field(token.token.id.toBigInt()))
+            expect(lenderTokenAccount.permissions).toEqual({
+                ...Permissions.default(),
+                editState: context.editPermission,
+                send: context.editPermission,
+                receive: Permissions.none(),
+                incrementNonce: context.editPermission,
+                setTokenSymbol: Permissions.proofOrSignature()
+            })
 
             let amount = UInt64.from(10000);
 
@@ -310,7 +331,7 @@ describe('lending - e2e', () => {
             expect(deployerTokenAccount.balance).toEqual(
                 UInt64.from(tokenPreMint).sub(amount)
             );
-            let lenderTokenAccount = await context.getAccount(
+            lenderTokenAccount = await context.getAccount(
                 lender.address,
                 token.token.id
             );
@@ -423,10 +444,11 @@ describe('lending - e2e', () => {
             let events2 = await context.fetchEvents(() => lender.fetchEvents(), { expectedLength: 2 })
             expect(events2.length).toEqual(2);
 
-            let borrowEvent = events2[0].event as unknown as BorrowEvent;
-            expect(borrowEvent.amount).toEqual(borrowAmount);
-            expect(borrowEvent.tokenId).toEqual(token.token.id);
-            expect(borrowEvent.account).toEqual(accounts[0].toPublicKey());
+            let borrowEvent = (events2.find(x => x.type === 'borrow')?.event) as unknown as BorrowEvent | undefined;
+            expect(borrowEvent).toBeDefined()
+            expect(borrowEvent?.amount).toEqual(borrowAmount);
+            expect(borrowEvent?.tokenId).toEqual(token.token.id);
+            expect(borrowEvent?.account).toEqual(accounts[0].toPublicKey());
 
         },
         EXTENDED_JEST_TIMEOUT
