@@ -206,22 +206,6 @@ describe('Multisig - E2E', () => {
                 witness
             );
 
-            // let res = Circuit.constraintSystem(() => {
-            //     let pi = Circuit.witness(MultiSigProgramStateTransition, () => transition)
-            //     let _signer = Circuit.witness(PublicKey, () => signer.toPublicKey())
-            //     let _signature = Circuit.witness(Signature, () => signature)
-            //     let _vote = Circuit.witness(Bool, () => Bool(true))
-            //     let _witness = Circuit.witness(MultiSigMerkleWitness, () => witness)
-            //
-            //     MultiSigProgramNoProofs.approve(
-            //         pi, _signer, _signature, _vote, _witness
-            //     )
-            // })
-            //
-            // console.log("Constraintsystem stats:")
-            // console.log(res.rows)
-            // console.log(res.publicInputSize)
-            // console.log(res.gates.length)
 
             return new MultisigProgramProof({
                 maxProofsVerified: 2,
