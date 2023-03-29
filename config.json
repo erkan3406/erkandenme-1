@@ -1,4 +1,11 @@
 {
   "version": 1,
-  "deployAliases": {}
+  "deployAliases": {},
+  "networks": {
+    "berkeley": {
+      "mina": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "archive": "https://archive.berkeley.minaexplorer.com/",
+      "keyPath": "keys/berkeley.json"
+    }
+  }
 }

@@ -90,6 +90,7 @@ export class Lender extends SmartContract {
             send: editPermission,
             receive: editPermission,
             editSequenceState: editPermission,
+
         });
     }
 

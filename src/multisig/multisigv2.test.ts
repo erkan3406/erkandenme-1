@@ -258,7 +258,7 @@ describe('Multisig - E2E', () => {
         }
     }
 
-    it2(`Test DepositTimelocked - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+    it(`Test DepositTimelocked - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
         let {tx, pk, instance} = await deployAndFundMultisig(
             signers,
@@ -425,17 +425,18 @@ describe('Multisig - E2E', () => {
         expect(contractAccount.zkapp?.appState[2]).toEqual(Field(numSigners))
         expect(contractAccount.zkapp?.appState[3]).toEqual(Field(2)) //k
 
-        let events = (await Mina.fetchEvents(
-            contract.address,
-            Field(1)
-        )) as EventResponse[];
+        // let events = (await Mina.fetchEvents(
+        //     contract.address,
+        //     Field(1)
+        // )) as EventResponse[];
+        let events = await contract.fetchEvents()
 
         expect(events.length).toEqual(1)
-        expect(events[0].events[0][0]).toEqual("0") //index
 
-        let multiSigEvent = MultiSigEvent.fromFields(
-            events[0].events[0].slice(1).map((x) => Field(x))
-        )
+        // let multiSigEvent = MultiSigEvent.fromFields(
+        //     events[0].events[0].slice(1).map((x) => Field(x))
+        // )
+        let multiSigEvent = events[0].event as unknown as MultiSigEvent
         expect(multiSigEvent.proposal).toEqual(proposal)
         expect(multiSigEvent.votes[0]).toEqual(Field(2))
         expect(multiSigEvent.votes[1]).toEqual(Field(0))

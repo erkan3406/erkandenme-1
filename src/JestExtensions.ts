@@ -1,6 +1,6 @@
 import {
     DeployArgs,
-    fetchAccount,
+    fetchAccount, fetchLastBlock,
     Field,
     isReady,
     Mina,
@@ -14,6 +14,8 @@ import {
 } from 'snarkyjs';
 import fs from 'fs';
 import { tic, toc } from './tictoc';
+import {sleep, TransactionId} from "./utils";
+import config from '../config.json';
 
 type DeployArgsFactory = (
     pk: PrivateKey,
@@ -34,6 +36,9 @@ type TestContext = {
     getAccount: (pk: PublicKey, tokenId?: Field) => Promise<Types.Account>;
     editPermission: Types.AuthRequired;
     defaultFee: UInt64;
+    waitOnTransaction: (tx: TransactionId, timeout?: number) => Promise<void>,
+    fetchAccounts: (tx: Mina.Transaction) => Promise<void>,
+    fetchEvents: <T>(f: () => Promise<T[]>, options: { numBlocks?: number, expectedLength: number }) => Promise<T[]>
 };
 
 type DeployVK = { data: string; hash: string | Field };
@@ -87,6 +92,103 @@ export function getTestContext(): TestContext {
         }
     };
 
+    const getAccount = async (publicKey: PublicKey, tokenId?: Field) => {
+        if (deployToBerkeley) {
+            await fetchAccount({
+                publicKey,
+                tokenId: tokenId ? Token.Id.toBase58(tokenId) : undefined,
+            });
+        }
+        return Mina.getAccount(publicKey, tokenId);
+    }
+
+    // let ledger = Ledger.create([])
+    // let nonceOffsets: { [key: string]: bigint } = {}
+    //
+    // let applyTransaction = async function(tx: Types.ZkappCommand){
+    //
+    //     for(let auHolder of tx.accountUpdates){
+    //         let au = auHolder.body
+    //         if(!Mina.hasAccount(au.publicKey, au.tokenId)){
+    //             if(context.berkeley){
+    //                 let fetch = await fetchAccount({publicKey: au.publicKey, tokenId: au.tokenId})
+    //                 if(!fetch.error){
+    //                     nonceOffsets[fetch.account.publicKey.toBase58()] = fetch.account.nonce.toBigint()
+    //                     ledger.addAccount(au.publicKey, fetch.account.balance.toString())
+    //                 }else{
+    //                     nonceOffsets[au.publicKey.toBase58()] = 0n
+    //                     ledger.addAccount(au.publicKey, "0")
+    //                 }
+    //             }else{
+    //                 return //TODO Ok?
+    //             }
+    //         }
+    //     }
+    //
+    //     ledger.applyJsonTransaction(
+    //         JSON.stringify(Types.ZkappCommand.toJSON(tx)),
+    //         String(1e9),
+    //         JSON.stringify(Mina.getNetworkState())
+    //     )
+    //     let pks = tx.accountUpdates.map(x => x.body.publicKey).filter((value, index, array) => array.indexOf(value) === index)
+    //     for(let pk of pks){
+    //         addCachedAccount()
+    //     }
+    //
+    // }
+
+    let fetchAccounts = async function(tx: Mina.Transaction) {
+
+        if(deployToBerkeley){
+
+            let auPks = tx.transaction.accountUpdates.map(x => { return { pk: x.body.publicKey, token: x.body.tokenId }});
+            auPks.push({ pk: tx.transaction.feePayer.body.publicKey, token: Token.Id.default })
+            let pks = auPks.filter((value, index, array) => array.indexOf(value) === index)
+
+            for(let pk of pks){
+                await fetchAccount({ publicKey: pk.pk, tokenId: pk.token })
+            }
+
+        }
+
+    }
+
+    let fetchEvents = async function<T>(f: () => Promise<T[]>, options: { numBlocks?: number, expectedLength: number }) : Promise<T[]> {
+
+        if(!deployToBerkeley){
+            return f()
+        }
+
+        let maxBlocks = BigInt((options.numBlocks ?? 3) - 1) //By default, wait for 2 more blocks if the inclusion block fails
+
+        let startBlock = -1n;
+        let latestBlock = 0n;
+
+        let timeout = 5000;
+
+        while(latestBlock <= startBlock + maxBlocks) {
+
+            let currentBlock = (await fetchLastBlock(config.networks.berkeley.mina)).blockchainLength.toBigint()
+
+            if(latestBlock < currentBlock){
+                let events = await f()
+                if(events.length >= options.expectedLength){
+                    return events
+                }
+
+                latestBlock = currentBlock
+                if(startBlock === -1n){
+                    startBlock = currentBlock
+                }
+            }
+
+            await sleep(timeout)
+        }
+
+        throw Error("Events did not dispatch or archive node didn't retrieve them")
+
+    }
+
     let context: TestContext = {
         accounts: [],
         berkeley: deployToBerkeley,
@@ -96,17 +198,47 @@ export function getTestContext(): TestContext {
         before: async () => {
             return;
         },
-        getAccount: async (publicKey: PublicKey, tokenId?: Field) => {
-            if (deployToBerkeley) {
-                await fetchAccount({
-                    publicKey,
-                    tokenId: tokenId ? Token.Id.toBase58(tokenId) : undefined,
-                });
-            }
-            return Mina.getAccount(publicKey, tokenId);
-        },
+        getAccount,
         editPermission: proofs ? Permissions.proof() : Permissions.signature(),
         defaultFee: UInt64.from(0.01 * 1e9),
+        waitOnTransaction: async (tx: TransactionId, timeout?: number) => {
+
+            console.log("Waiting for tx " + tx.hash() + " to be mined")
+
+            if(!tx.isSuccess){
+                console.warn("returning immediately because the transaction was not successful.")
+                return
+            }
+
+            let running = true
+            let counter = 0
+            let timeoutId = setTimeout(() => {
+                throw new Error("Timeout reached while waiting for a new block")
+            }, timeout ?? 30 * 60 * 1000)
+            while(running){
+                try{
+                    await tx.wait()
+                    running = false
+                }catch(e){
+                    console.log(e)
+                    console.log("Continuing to wait")
+                    // let e2 = e as Error
+                    // if(e2.message.includes("Exceeded")){
+                    //     throw e
+                    // }
+                }
+                if(counter >= 10){
+                    return
+                }
+                counter++
+            }
+            clearTimeout(timeoutId)
+            console.log("Tx mined!")
+
+            return
+        },
+        fetchAccounts,
+        fetchEvents
     };
 
     let before = async () => {
@@ -116,9 +248,8 @@ export function getTestContext(): TestContext {
 
         if (deployToBerkeley) {
             Blockchain = Mina.Network({
-                mina: 'https://proxy.berkeley.minaexplorer.com/graphql',
-                // mina: 'https://berkeley.eu2.rpanic.com/graphql',
-                archive: 'https://archive.berkeley.minaexplorer.com/',
+                mina: config.networks.berkeley.mina,
+                archive: config.networks.berkeley.archive,
             });
             Mina.setActiveInstance(Blockchain);
             context.accounts = getBerkeleyAccounts(10);
@@ -130,6 +261,11 @@ export function getTestContext(): TestContext {
                     'Requesting funds from faucet to ' + mainPk.toBase58()
                 );
                 await Mina.faucet(mainPk);
+
+                // let MINA = 10n ** 9n;
+                // const facuetValue = 49n * MINA;
+                // ledger.addAccount(mainPk, facuetValue.toString())
+
                 console.log('Address funded!');
             };
 
@@ -151,6 +287,7 @@ export function getTestContext(): TestContext {
             });
             Blockchain = localBC;
             context.accounts = localBC.testAccounts.map((x) => x.privateKey);
+
             Mina.setActiveInstance(Blockchain);
         }
     };
@@ -159,10 +296,6 @@ export function getTestContext(): TestContext {
 
     return context;
 }
-
-export type EventResponse = {
-    events: string[][];
-};
 
 export function it2(name: string, f: () => void, timeout?: number) {
     console.log('Disabled ' + name);
