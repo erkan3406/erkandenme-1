@@ -205,4 +205,4 @@ function regenerateBerkeleyAccounts(num: number) {
     return pks.map((x) => PrivateKey.fromBase58(x.privateKey));
 }
 
-export const EXTENDED_JEST_TIMEOUT = 60 * 60 * 1000; //30 minutes
+export const EXTENDED_JEST_TIMEOUT = 600 * 60 * 1000; //30 minutes

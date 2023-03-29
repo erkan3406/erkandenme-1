@@ -21,6 +21,7 @@
         "prepare": "husky install",
         "test": "node --experimental-vm-modules --experimental-wasm-threads node_modules/jest/bin/jest.js",
         "testenabled": "node --experimental-vm-modules --experimental-wasm-threads node_modules/jest/bin/jest.js -- Lender",
+        "testmulti": "node --experimental-vm-modules --experimental-wasm-threads node_modules/jest/bin/jest.js -- Multisig",
         "testw": "node --experimental-vm-modules --experimental-wasm-threads node_modules/jest/bin/jest.js --watch",
         "lint": "npx eslint src/* --fix",
         "playground": "npm run build && node build/src/playground.js"

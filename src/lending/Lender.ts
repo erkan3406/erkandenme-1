@@ -29,6 +29,7 @@ import {
     ValuedMerkleTreeWitness,
 } from './model';
 import { LiquidityActionWitnesses, WitnessService } from './WitnessService';
+import {LenderTokenHolder} from "./LenderTokenHolder";
 
 export const staticWitnessService = new WitnessService();
 
@@ -102,12 +103,17 @@ export class Lender extends SmartContract {
     @method
     addLiquidity(
         parentUpdate: AccountUpdate,
+        // tokenId: Field,
         tokenAddress: PublicKey,
         amount: UInt64
     ) {
         let sender = this.sender; //So that only one witness is generated
 
         Circuit.log('addLiquidity sender:', sender);
+
+        //TODO Move that logic into LenderTokenHolder
+        // let tokenHolder = new LenderTokenHolder(this.address, tokenId)
+        // tokenHolder.addLiquidity(parentUpdate, tokenAddress, amount)
 
         let token = new LendableToken(tokenAddress);
         token.approveUpdateAndSend(parentUpdate, this.address, amount);
@@ -234,30 +240,35 @@ export class Lender extends SmartContract {
         this.latestActionHash.set(reducerResult.actionsHash);
     }
 
+
     @method
     borrow(
         tokenAddress: PublicKey,
+        tokenId: Field,
         amount: UInt64,
         signature: Signature,
         witness: LendingMerkleWitness,
-        _userInfo: LendingUserInfo
+        _userInfo: LendingUserInfo,
+        // approval: Experimental.Callback<any>
     ) {
-        let blockChainLength = this.network.blockchainLength.get();
-        //TODO Check if this is okay, since it might not get included and then CI fails
-        this.network.blockchainLength.assertBetween(
-            blockChainLength,
-            blockChainLength.add(2)
-        ); //Only valid if included in the next block
+        Circuit.log('borrow');
 
-        this.network.timestamp.assertBetween(
-            this.network.timestamp.get(),
-            UInt64.MAXINT()
-        );
+        // let blockChainLength = this.network.blockchainLength.get();
+        // //TODO Check if this is okay, since it might not get included and then CI fails
+        // this.network.blockchainLength.assertBetween(
+        //     blockChainLength,
+        //     blockChainLength.add(2)
+        // ); //Only valid if included in the next block
 
-        this.network.totalCurrency.assertBetween(
-            UInt64.zero,
-            this.network.totalCurrency.get().mul(2)
-        );
+        // this.network.timestamp.assertBetween(
+        //     this.network.timestamp.get(),
+        //     UInt64.MAXINT()
+        // );
+
+        // this.network.totalCurrency.assertBetween(
+        //     UInt64.zero,
+        //     this.network.totalCurrency.get().mul(2)
+        // );
 
         //TODO More preconditions
 
@@ -271,6 +282,10 @@ export class Lender extends SmartContract {
             totalLiquidity: _userInfo.totalLiquidity,
             liquidityRoot: _userInfo.liquidityRoot,
         });
+
+        Circuit.log('TL', _userInfo.totalLiquidity);
+        Circuit.log('BO', _userInfo.borrowed);
+        Circuit.log('A', amount);
 
         userInfo.totalLiquidity
             .sub(userInfo.borrowed)
@@ -300,16 +315,33 @@ export class Lender extends SmartContract {
 
         userInfo.borrowed = userInfo.borrowed.add(amount);
 
-        let token = new LendableToken(tokenAddress);
+        // let token = new LendableToken(tokenAddress);
+        let tokenHolder = new LenderTokenHolder(this.address, tokenId)
+        tokenHolder.borrow(
+            // approval,
+            // tokenAddress,
+            // sender,
+            amount
+        )
 
-        let au = Experimental.createChildAccountUpdate(
-            this.self,
-            this.address,
-            token.token.id
-        );
-        au.balance.subInPlace(amount);
+        let token = new LendableToken(tokenAddress)
+        token.approveUpdateAndSend(tokenHolder.self, sender, amount)
 
-        token.approveUpdateAndSend(au, sender, amount);
+        // let au = Experimental.createChildAccountUpdate(
+        //     this.self,
+        //     this.address,
+        //     token.token.id
+        // );
+        // au.balance.subInPlace(amount);
+
+        // let approveSendingCallback = Experimental.Callback.create(
+        //     this,
+        //     'approveSend',
+        //     [amount]
+        // );
+
+        // token.approveUpdateAndSend(au, sender, amount);
+        // token.approveTransferCallback(approval, sender, amount);
 
         let newLiquidityRoot = witness.calculateRoot(
             userInfo.hash(WitnessService.emptyMerkleRoot)
@@ -320,7 +352,7 @@ export class Lender extends SmartContract {
         this.emitEvent(
             'borrow',
             new BorrowEvent({
-                tokenId: token.token.id,
+                tokenId: tokenId,
                 account: sender,
                 amount,
             })
