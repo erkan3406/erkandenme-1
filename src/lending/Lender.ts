@@ -2,9 +2,7 @@ import {
     AccountUpdate,
     Circuit,
     DeployArgs,
-    Experimental,
     Field,
-    MerkleTree,
     method,
     Permissions,
     PrivateKey,
@@ -21,12 +19,10 @@ import { LendableToken } from './LendableToken';
 import { structArrayToFields } from '../utils';
 import {
     BorrowEvent,
-    LENDING_MERKLE_HEIGHT,
     LendingMerkleWitness,
     LendingUserInfo,
     LiquidityAddEvent,
     UserLiquidityAction,
-    ValuedMerkleTreeWitness,
 } from './model';
 import { LiquidityActionWitnesses, WitnessService } from './WitnessService';
 import {LenderTokenHolder} from "./LenderTokenHolder";
@@ -105,7 +101,7 @@ export class Lender extends SmartContract {
         tokenAddress: PublicKey,
         amount: UInt64
     ) {
-        let sender = this.sender; //So that only one witness is generated
+        let sender = this.sender; //Save, so that only one witness is generated
 
         Circuit.log('addLiquidity sender:', sender);
 
@@ -242,8 +238,7 @@ export class Lender extends SmartContract {
         amount: UInt64,
         signature: Signature,
         witness: LendingMerkleWitness,
-        _userInfo: LendingUserInfo,
-        // approval: Experimental.Callback<any>
+        _userInfo: LendingUserInfo
     ) {
         Circuit.log('borrow');
 
@@ -276,10 +271,6 @@ export class Lender extends SmartContract {
             liquidityRoot: _userInfo.liquidityRoot,
         });
 
-        Circuit.log('TL', _userInfo.totalLiquidity);
-        Circuit.log('BO', _userInfo.borrowed);
-        Circuit.log('A', amount);
-
         userInfo.totalLiquidity
             .sub(userInfo.borrowed)
             .assertGreaterThanOrEqual(
@@ -308,7 +299,6 @@ export class Lender extends SmartContract {
 
         userInfo.borrowed = userInfo.borrowed.add(amount);
 
-        // let token = new LendableToken(tokenAddress);
         let tokenHolder = new LenderTokenHolder(this.address, tokenId)
         tokenHolder.borrow(
             amount
@@ -316,22 +306,6 @@ export class Lender extends SmartContract {
 
         let token = new LendableToken(tokenAddress)
         token.approveUpdateAndSend(tokenHolder.self, sender, amount)
-
-        // let au = Experimental.createChildAccountUpdate(
-        //     this.self,
-        //     this.address,
-        //     token.token.id
-        // );
-        // au.balance.subInPlace(amount);
-
-        // let approveSendingCallback = Experimental.Callback.create(
-        //     this,
-        //     'approveSend',
-        //     [amount]
-        // );
-
-        // token.approveUpdateAndSend(au, sender, amount);
-        // token.approveTransferCallback(approval, sender, amount);
 
         let newLiquidityRoot = witness.calculateRoot(
             userInfo.hash(WitnessService.emptyMerkleRoot)

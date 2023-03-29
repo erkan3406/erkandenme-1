@@ -3,8 +3,6 @@ import {
   Circuit,
   Experimental,
   Field,
-  isReady,
-  MerkleMapWitness,
   Proof,
   PublicKey,
   SelfProof,
@@ -14,11 +12,9 @@ import {
 import ZkProgram = Experimental.ZkProgram;
 import {
   MultiSigMerkleWitness,
-  Proposal,
   ProposalState,
   SignerState,
 } from './model';
-import { MerkleMapUtils } from '../utils';
 
 export class MultiSigProgramState extends Struct({
   state: ProposalState,

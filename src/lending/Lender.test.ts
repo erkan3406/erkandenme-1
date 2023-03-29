@@ -217,7 +217,7 @@ describe('lending - e2e', () => {
         EXTENDED_JEST_TIMEOUT
     );
 
-    it2(`Adding liquidity and borrowing - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
+    it(`Adding liquidity and borrowing - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
         async () => {
             let witnessService = staticWitnessService;
             witnessService.initUser(accounts[0].toPublicKey().toBase58());

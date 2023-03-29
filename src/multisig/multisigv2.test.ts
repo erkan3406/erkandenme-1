@@ -318,7 +318,7 @@ describe('Multisig - E2E', () => {
 
     }, EXTENDED_JEST_TIMEOUT)
 
-    it2(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+    it(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
         let {tx, pk, instance} = await deployAndFundMultisig(
             signers,
