@@ -47,25 +47,24 @@ class LenderLiquidityReducerResult extends Struct({
  */
 export class Lender extends SmartContract {
     @state(Field) userLiquidityRoot = State<Field>();
-    // @state(Field) tokenLiquidityRoot = State<Field>()
+
     @state(UInt64) totalCollateral = State<UInt64>();
 
     @state(Field) latestActionHash = State<Field>();
 
     events = {
-        borrow: BorrowEvent,
+        'borrow': BorrowEvent,
         'liquidity-added': LiquidityAddEvent,
     };
 
     reducer = Reducer({ actionType: UserLiquidityAction });
-    // reducer = Reducer({ actionType: Field });
 
     signature_prefixes = {
         borrow: Field(1001),
         repay: Field(1002),
     };
 
-    //Reference to generate Witnesses
+    //Reference to generate Witnesses, not part of circuit
     witnessService: WitnessService;
 
     static getInstance(
@@ -104,7 +103,6 @@ export class Lender extends SmartContract {
     @method
     addLiquidity(
         parentUpdate: AccountUpdate,
-        // tokenId: Field,
         tokenAddress: PublicKey,
         amount: UInt64
     ) {
@@ -118,8 +116,6 @@ export class Lender extends SmartContract {
 
         let token = new LendableToken(tokenAddress);
         token.approveUpdateAndSend(parentUpdate, this.address, amount);
-
-        //TODO Lock tokens?
 
         this.reducer.dispatch(
             new UserLiquidityAction({
@@ -186,9 +182,7 @@ export class Lender extends SmartContract {
                         action.token.x,
                         'Token witness index not correct'
                     );
-                let tokenRoot = witnessToken.calculateRoot(
-                    liquiditySoFar.value
-                );
+                let tokenRoot = witnessToken.calculateRoot(liquiditySoFar.value);
 
                 let userInfo = new LendingUserInfo({
                     borrowed,
@@ -203,7 +197,7 @@ export class Lender extends SmartContract {
                         'User witness index not correct'
                     );
 
-                Circuit.log('Checkpoint 1B', WitnessService.emptyMerkleRoot);
+
                 witnessUser
                     .calculateRoot(
                         userInfo.hash(WitnessService.emptyMerkleRoot)
@@ -254,22 +248,21 @@ export class Lender extends SmartContract {
     ) {
         Circuit.log('borrow');
 
-        // let blockChainLength = this.network.blockchainLength.get();
-        // //TODO Check if this is okay, since it might not get included and then CI fails
-        // this.network.blockchainLength.assertBetween(
-        //     blockChainLength,
-        //     blockChainLength.add(2)
-        // ); //Only valid if included in the next block
+        let blockChainLength = this.network.blockchainLength.get();
+        this.network.blockchainLength.assertBetween(
+            blockChainLength,
+            blockChainLength.add(10)
+        ); //Only valid if included in the next 10 blocks
 
-        // this.network.timestamp.assertBetween(
-        //     this.network.timestamp.get(),
-        //     UInt64.MAXINT()
-        // );
+        this.network.timestamp.assertBetween(
+            this.network.timestamp.get(),
+            UInt64.MAXINT()
+        );
 
-        // this.network.totalCurrency.assertBetween(
-        //     UInt64.zero,
-        //     this.network.totalCurrency.get().mul(2)
-        // );
+        this.network.totalCurrency.assertBetween(
+            UInt64.zero,
+            this.network.totalCurrency.get().mul(2)
+        );
 
         //TODO More preconditions
 

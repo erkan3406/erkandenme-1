@@ -5,11 +5,9 @@ import {
     Experimental,
     Field,
     Int64,
-    MerkleMapWitness,
     MerkleTree,
     method,
     Permissions,
-    Poseidon,
     PrivateKey,
     PublicKey,
     Signature,
@@ -20,9 +18,8 @@ import {
     Types,
     UInt64, VerificationKey,
 } from 'snarkyjs';
-import { MerkleMapUtils, structArrayToFields } from '../utils';
-import { LENDING_MERKLE_HEIGHT, LendingMerkleWitness } from './model';
-import {Permission} from "snarkyjs/dist/web/lib/account_update";
+import { structArrayToFields } from '../utils';
+import { LENDING_MERKLE_HEIGHT } from './model';
 
 export class TokenUserEvent extends Struct({
     sender: PublicKey,
@@ -96,14 +93,7 @@ export class LendableToken extends SmartContract {
     ) {
         const layout = AccountUpdate.Layout.AnyChildren;
 
-        const approvedAccountUpdate = this.approve(callback, layout);
-
-        // const balanceChange = Int64.fromObject(
-        //     approvedAccountUpdate.body.balanceChange
-        // );
-        // approvedAccountUpdate.children.accountUpdates[0]
-        // balanceChange.isPositive().assertFalse("Callback has to have negative sign")
-        // balanceChange.magnitude.equals(amount).assertTrue("Callback not funding mint enough");
+        this.approve(callback, layout);
 
         this.token.mint({
             address: receiverAddress,
@@ -182,7 +172,8 @@ export class LendableToken extends SmartContract {
             editState: proof ? Permissions.proof() : Permissions.signature(),
             send: proof ? Permissions.proof() : Permissions.signature(),
             receive: Permissions.none(),
-            incrementNonce: proof ? Permissions.proof() : Permissions.signature()
+            incrementNonce: proof ? Permissions.proof() : Permissions.signature(),
+            setTokenSymbol: Permissions.proofOrSignature()
         });
         return zkapp
     }

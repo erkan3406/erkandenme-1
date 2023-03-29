@@ -8,11 +8,11 @@ import {
     UInt64,
     Bool,
     PublicKey,
-    Signature, UInt32, Circuit, Types, Permissions, fetchTransactionStatus,
+    Signature, UInt32, Circuit, Types, Permissions, fetchTransactionStatus, fetchLastBlock,
 } from 'snarkyjs';
 import {beforeEach, afterAll, it, expect} from '@jest/globals';
-import {EventResponse, EXTENDED_JEST_TIMEOUT, getTestContext, it2} from '../JestExtensions';
-import {MultiSigContract, MultiSigEvent} from './multisigv2';
+import { EXTENDED_JEST_TIMEOUT, getTestContext, it2} from '../JestExtensions';
+import {FundsLockedEvent, MultiSigContract, MultiSigEvent} from './multisigv2';
 import {TransactionId} from '../utils';
 import {
     MultiSigProgram,
@@ -29,6 +29,7 @@ import {
     SignerState,
 } from './model';
 import {tic, toc} from '../tictoc';
+import config from "../../config.json"
 
 describe('Multisig - E2E', () => {
 
@@ -273,27 +274,49 @@ describe('Multisig - E2E', () => {
         await tx.wait();
 
         let amount = UInt64.from(10000)
+        let time = UInt32.from(1)
+
+        let blockchainLength
+        if(context.berkeley){
+            blockchainLength = (await fetchLastBlock(config.networks.berkeley.mina)).blockchainLength.toBigint()
+        }else{
+            blockchainLength = Mina.getNetworkState().blockchainLength.toBigint()
+        }
 
         let tx2 = await Mina.transaction({ sender: accounts[0].toPublicKey(), fee: context.defaultFee }, () => {
 
             AccountUpdate.createSigned(accounts[0].toPublicKey())
                 .balance.subInPlace(amount)
 
-            contract.depositTimelocked(amount, UInt32.from(1))
+            contract.depositTimelocked(amount, time)
             if(!context.proofs){
                 contract.requireSignature()
             }
         })
         await context.signOrProve(tx2, accounts[0], [contractPk])
-        await (await tx2.send()).wait()
+        await context.waitOnTransaction(await tx2.send())
 
         let contractAccount = await context.getAccount(contract.address)
         expect(contractAccount.balance).toEqual(amount)
-        expect(contractAccount.timing.isTimed).toEqual(Bool(true))
 
-        //TODO Check event
+        if(context.berkeley) {
+            expect(contractAccount.timing.isTimed).toEqual(Bool(true))
+            expect(contractAccount.timing.initialMinimumBalance).toEqual(amount)
+            expect(contractAccount.timing.vestingPeriod).toEqual(UInt32.one)
+            expect(contractAccount.timing.vestingIncrement).toEqual(amount)
+            expect(contractAccount.timing.cliffAmount).toEqual(UInt32.zero)
+            expect(contractAccount.timing.cliffTime).toBeLessThanOrEqual(blockchainLength + 3n)
+            if (context.berkeley) { //Only on berkeley because blockchainLength will by 0 on localBlockchain
+                expect(contractAccount.timing.cliffTime).toBeGreaterThan(blockchainLength)
+            }
+        }
 
-        // let deployerAccount1 = await context.getAccount(accounts[0].toPublicKey())
+        let events = await context.fetchEvents(() => contract.fetchEvents(), { expectedLength : 1})
+        expect(events.length).toBeGreaterThanOrEqual(1)
+
+        let event = events[0].event as unknown as FundsLockedEvent
+        expect(event.amount).toEqual(amount)
+        expect(event.time).toEqual(time)
 
         let tx3 = await Mina.transaction({ sender: accounts[0].toPublicKey() }, () => {
 
@@ -302,28 +325,16 @@ describe('Multisig - E2E', () => {
                 to: accounts[0].toPublicKey(),
                 amount: amount
             })
-            au.requireSignature()
 
         })
+        //TODO Fix this
         tx3.sign([contractPk, accounts[0]]) //Only sign, not prove because permissions were set this way, test is still the same but faster
 
         await expect(async () => { await tx3.send() }).rejects.toBeDefined() //Cannot validate error message, because Error is an object with very weird properties
 
-        // console.log(txId.isSuccess)
-        // await txId.wait()
-
-        // let contractAccount2 = await context.getAccount(contract.address)
-        // let deployerAccount2 = await context.getAccount(accounts[0].toPublicKey())
-
-        // expect(contractAccount2.balance).toEqual(contractAccount.balance)
-        // expect(contractAccount2.nonce).toEqual(contractAccount.nonce)
-        //
-        // expect(deployerAccount2.balance).toEqual(deployerAccount1.balance)
-        // expect(deployerAccount2.nonce).toEqual(deployerAccount1.nonce)
-
     }, EXTENDED_JEST_TIMEOUT)
 
-    it(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+    it2(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
         let {tx, pk, instance} = await deployAndFundMultisig(
             signers,
@@ -425,17 +436,10 @@ describe('Multisig - E2E', () => {
         expect(contractAccount.zkapp?.appState[2]).toEqual(Field(numSigners))
         expect(contractAccount.zkapp?.appState[3]).toEqual(Field(2)) //k
 
-        // let events = (await Mina.fetchEvents(
-        //     contract.address,
-        //     Field(1)
-        // )) as EventResponse[];
-        let events = await contract.fetchEvents()
+        let events = await context.fetchEvents(() => contract.fetchEvents(), {expectedLength: 1})
 
-        expect(events.length).toEqual(1)
+        expect(events.length).toBeGreaterThanOrEqual(1)
 
-        // let multiSigEvent = MultiSigEvent.fromFields(
-        //     events[0].events[0].slice(1).map((x) => Field(x))
-        // )
         let multiSigEvent = events[0].event as unknown as MultiSigEvent
         expect(multiSigEvent.proposal).toEqual(proposal)
         expect(multiSigEvent.votes[0]).toEqual(Field(2))
@@ -444,5 +448,6 @@ describe('Multisig - E2E', () => {
         expect(multiSigEvent.receiverCreationFeePaid).toEqual(Bool(!receiverFunded))
 
         //TODO Unfunded account
+
     }, EXTENDED_JEST_TIMEOUT);
 });

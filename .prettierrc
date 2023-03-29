@@ -3,5 +3,5 @@
   "singleQuote": true,
   "tabWidth": 4,
   "trailingComma": "es5",
-  "maxLineLength": 140
+  "maxLineLength": 200
 }

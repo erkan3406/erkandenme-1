@@ -203,7 +203,7 @@ export function getTestContext(): TestContext {
         defaultFee: UInt64.from(0.01 * 1e9),
         waitOnTransaction: async (tx: TransactionId, timeout?: number) => {
 
-            console.log("Waiting for tx " + tx.hash() + " to be mined")
+            console.log("Waiting for tx" + (deployToBerkeley ? " " + tx.hash() : "") + " to be mined")
 
             if(!tx.isSuccess){
                 console.warn("returning immediately because the transaction was not successful.")
