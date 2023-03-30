@@ -103,6 +103,16 @@ describe('Multisig - E2E', () => {
                 .map((x, i) => i + ': ' + x.toPublicKey().toBase58())
                 .reduce((a, b, i) => a + '\n' + b)
         );
+
+        if (context.proofs) {
+            tic('Compiling MultiSigProgram');
+            await MultiSigProgram.compile();
+            toc();
+            tic("Compiling MultiSigContract")
+            await context.getDeployArgs(PrivateKey.random(), MultiSigContract)
+            toc()
+        }
+
     }, EXTENDED_JEST_TIMEOUT);
 
     afterAll(() => {
@@ -125,15 +135,6 @@ describe('Multisig - E2E', () => {
                     voted: Bool(false),
                 }).hash()
             );
-        }
-
-        if (context.proofs) {
-            tic('Compiling MultiSigProgram');
-            await MultiSigProgram.compile();
-            toc();
-            tic("Compiling MultiSigContract")
-            await context.getDeployArgs(PrivateKey.random(), MultiSigContract)
-            toc()
         }
     }, EXTENDED_JEST_TIMEOUT);
 
@@ -245,6 +246,8 @@ describe('Multisig - E2E', () => {
 
     it(`Test DepositTimelocked - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
+        console.log("Starting timelock test")
+
         let {tx, pk, instance} = await deployAndFundMultisig(
             signers,
             numSigners,
@@ -255,10 +258,10 @@ describe('Multisig - E2E', () => {
         contract = instance;
         contractPk = pk;
 
-        await tx.wait();
+        await context.waitOnTransaction(tx);
 
         let amount = UInt64.from(10000)
-        let time = UInt32.from(1)
+        let time = UInt32.from(100)
 
         let blockchainLength
         if(context.berkeley){
@@ -320,6 +323,8 @@ describe('Multisig - E2E', () => {
 
     it(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
+        console.log("Starting approve test")
+
         let {tx, pk, instance} = await deployAndFundMultisig(
             signers,
             numSigners,
@@ -379,12 +384,8 @@ describe('Multisig - E2E', () => {
         expect(proof).toBeDefined();
         console.log('Proofs generated!');
 
-        console.log(`Waiting for L1 MultiSig contract to be deployed... (${tx.hash()})`)
-        try {
-            await tx.wait();
-        }catch(e){
-            await tx.wait()
-        }
+        console.log(`Waiting for L1 MultiSig contract to be deployed... (${context.berkeley ? tx.hash() : "localtx"})`)
+        await context.waitOnTransaction(tx);
 
         await context.getAccount(contract.address)
 
@@ -400,11 +401,7 @@ describe('Multisig - E2E', () => {
         await context.signOrProve(tx2, accounts[0], [contractPk]);
         let txId2 = await tx2.send()
 
-        try {
-            await txId2.wait();
-        }catch(e){
-            await txId2.wait()
-        }
+        await context.waitOnTransaction(txId2)
 
         let contractAccount = await context.getAccount(contract.address);
         let receiverAcccount = await context.getAccount(proposalReceiver);
