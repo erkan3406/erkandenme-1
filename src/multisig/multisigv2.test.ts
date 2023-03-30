@@ -292,9 +292,9 @@ describe('Multisig - E2E', () => {
             expect(contractAccount.timing.vestingPeriod).toEqual(UInt32.one)
             expect(contractAccount.timing.vestingIncrement).toEqual(amount)
             expect(contractAccount.timing.cliffAmount).toEqual(UInt32.zero)
-            expect(contractAccount.timing.cliffTime).toBeLessThanOrEqual(blockchainLength + 3n)
+            expect(contractAccount.timing.cliffTime.toBigint()).toBeLessThanOrEqual(blockchainLength + 3n)
             if (context.berkeley) { //Only on berkeley because blockchainLength will by 0 on localBlockchain
-                expect(contractAccount.timing.cliffTime).toBeGreaterThan(blockchainLength)
+                expect(contractAccount.timing.cliffTime.toBigint()).toBeGreaterThan(blockchainLength)
             }
         }
 
@@ -321,7 +321,7 @@ describe('Multisig - E2E', () => {
 
     }, EXTENDED_JEST_TIMEOUT)
 
-    it(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+    it2(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
         console.log("Starting approve test")
 
