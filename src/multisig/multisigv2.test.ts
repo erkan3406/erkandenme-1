@@ -319,6 +319,7 @@ describe('Multisig - E2E', () => {
 
         if(context.berkeley){
             let txId3 = await tx3.send()
+            await context.waitOnTransaction(txId3) //Wait anyways to not kill other tests
             //There is currently no way to check if a tx failed in inclusion
             // expect(txId3.isSuccess).toBeFalsy() //Does return true at the moment
         }else{
@@ -327,7 +328,7 @@ describe('Multisig - E2E', () => {
 
     }, EXTENDED_JEST_TIMEOUT)
 
-    it2(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+    it(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
         console.log("Starting approve test")
 

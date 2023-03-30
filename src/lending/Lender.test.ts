@@ -131,8 +131,7 @@ describe('lending - e2e', () => {
 
     let tokenPreMint = 1000000000n;
 
-    it(
-        `Basic token functionality - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
+    it(`Basic token functionality - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
         async () => {
             let deployResult = await deployNewToken('T1');
             await deployResult.tx.wait();
