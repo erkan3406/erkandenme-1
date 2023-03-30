@@ -265,9 +265,9 @@ describe('Multisig - E2E', () => {
 
         let blockchainLength
         if(context.berkeley){
-            blockchainLength = (await fetchLastBlock(config.networks.berkeley.mina)).blockchainLength.toBigint()
+            blockchainLength = (await fetchLastBlock(config.networks.berkeley.mina)).globalSlotSinceGenesis.toBigint()
         }else{
-            blockchainLength = Mina.getNetworkState().blockchainLength.toBigint()
+            blockchainLength = Mina.getNetworkState().globalSlotSinceGenesis.toBigint()
         }
 
         let tx2 = await Mina.transaction({ sender: accounts[0].toPublicKey(), fee: context.defaultFee }, () => {

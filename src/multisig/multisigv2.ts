@@ -81,6 +81,8 @@ export class MultiSigContract extends SmartContract {
         this.signerRoot.assertEquals(this.signerRoot.get());
         this.proposalState.assertEquals(this.proposalState.get());
 
+        this.account.balance.assertBetween(proof.publicInput.from.state.proposal.amount, UInt64.MAXINT());
+
         let fromProposalState = proof.publicInput.from.state;
 
         //Check that proposal is either new and not in the tree or is in the tree
