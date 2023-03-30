@@ -305,7 +305,7 @@ describe('Multisig - E2E', () => {
         expect(event.amount).toEqual(amount)
         expect(event.time).toEqual(time)
 
-        let tx3 = await Mina.transaction({ sender: accounts[0].toPublicKey() }, () => {
+        let tx3 = await Mina.transaction({ sender: accounts[0].toPublicKey(), fee: context.defaultFee }, () => {
 
             let au = AccountUpdate.createSigned(instance.address)
             au.send({
@@ -317,11 +317,16 @@ describe('Multisig - E2E', () => {
         //TODO Fix this
         tx3.sign([contractPk, accounts[0]]) //Only sign, not prove because permissions were set this way, test is still the same but faster
 
-        await expect(async () => { await tx3.send() }).rejects.toBeDefined() //Cannot validate error message, because Error is an object with very weird properties
+        if(context.berkeley){
+            let txId3 = await tx3.send()
+            expect(txId3.isSuccess).toBeFalsy()
+        }else{
+            await expect(async () => { await tx3.send() }).rejects.toBeDefined() //Cannot validate error message, because Error is an object with very weird properties
+        }
 
     }, EXTENDED_JEST_TIMEOUT)
 
-    it(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+    it2(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
         console.log("Starting approve test")
 
