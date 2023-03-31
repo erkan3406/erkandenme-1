@@ -1,19 +1,6 @@
-import {AccountUpdate, DeployArgs, method, Permissions, PrivateKey, SmartContract, UInt64} from "snarkyjs";
+import {method, SmartContract, UInt64} from "snarkyjs";
 
 export class LenderTokenHolder extends SmartContract{
-
-    // @state(Field) balanceRoot = State<Field>()
-
-    // @method
-    // addLiquidity(
-    //     parentUpdate: AccountUpdate,
-    //     tokenAddress: PublicKey,
-    //     amount: UInt64
-    // ) {
-    //
-    //
-    //
-    // }
 
     @method
     borrow(

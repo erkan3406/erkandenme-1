@@ -240,7 +240,6 @@ export class Lender extends SmartContract {
         witness: LendingMerkleWitness,
         _userInfo: LendingUserInfo
     ) {
-        Circuit.log('borrow');
 
         let blockChainLength = this.network.blockchainLength.get();
         this.network.blockchainLength.assertBetween(
