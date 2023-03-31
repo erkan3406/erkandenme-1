@@ -188,6 +188,7 @@ describe('lending - e2e', () => {
             await context.waitOnTransaction(txId);
             await context.fetchAccounts(tx);
 
+            token = new LendableToken(tokenPk.toPublicKey())
             let balance1 = token.getBalance(accounts[0].toPublicKey());
             expect(balance1.toBigInt()).toEqual(tokenPreMint - amount.toBigInt());
 
