@@ -66,15 +66,9 @@ describe('Multisig - E2E', () => {
 
                 //Deploy Contract
                 contract.deployContract(deployArgs, editPermission);
-                if (!context.proofs) {
-                    contract.requireSignature();
-                }
 
                 //Setup state
                 contract.setup(signers.getRoot(), Field(signersLength), Field(k));
-                if (!context.proofs) {
-                    contract.requireSignature();
-                }
 
                 //Fund contract with initial $MINA
                 let sendAu = AccountUpdate.create(accounts[0].toPublicKey());
@@ -207,7 +201,6 @@ describe('Multisig - E2E', () => {
                 witness
             );
 
-
             return new MultisigProgramProof({
                 maxProofsVerified: 2,
                 proof: '',
@@ -276,12 +269,10 @@ describe('Multisig - E2E', () => {
                 .balance.subInPlace(amount)
 
             contract.depositTimelocked(amount, time)
-            if(!context.proofs){
-                contract.requireSignature()
-            }
         })
         await context.signOrProve(tx2, accounts[0], [contractPk])
         await context.waitOnTransaction(await tx2.send())
+        await context.fetchAccounts(tx2)
 
         let contractAccount = await context.getAccount(contract.address)
         expect(contractAccount.balance).toEqual(amount)
@@ -328,7 +319,7 @@ describe('Multisig - E2E', () => {
 
     }, EXTENDED_JEST_TIMEOUT)
 
-    it(`Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+    it2(`Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
         console.log("Starting approve test")
 
@@ -396,9 +387,6 @@ describe('Multisig - E2E', () => {
             {sender: accounts[0].toPublicKey(), fee: context.defaultFee, memo: "approveWithProof" },
             () => {
                 contract.approveWithProof(proof);
-                if (!context.proofs) {
-                    contract.requireSignature();
-                }
             }
         );
         await context.signOrProve(tx2, accounts[0], [contractPk]);

@@ -103,7 +103,6 @@ describe('lending - e2e', () => {
                     token.deployZkapp(pk.toPublicKey(), LenderTokenHolder._verificationKey!)
                 }else{
                     token.deployZkappSignature(pk.toPublicKey())
-                    token.requireSignature()
                 }
                 // let tokenHolder = new LenderTokenHolder(pk.toPublicKey(), token.token.id)
                 // tokenHolder.deploy(tokenHolderDeployArgs)
@@ -178,9 +177,6 @@ describe('lending - e2e', () => {
                         accounts[1].toPublicKey(),
                         amount
                     );
-                    if (!context.proofs) {
-                        token.requireSignature();
-                    }
                 }
             );
             await context.signOrProve(tx, accounts[0], [tokenPk]);
@@ -289,13 +285,6 @@ describe('lending - e2e', () => {
                     tokenAu.balance.subInPlace(amount);
 
                     lender.addLiquidity(tokenAu, token.address, amount);
-                    if (!context.proofs) {
-                        tokenAu.requireSignature();
-                        lender.requireSignature();
-                        lender.self.children.accountUpdates.forEach((x) =>
-                            x.requireSignature()
-                        );
-                    }
                 }
             );
             await context.signOrProve(tx3, accounts[0], [lenderPk, tokenPk]);
@@ -352,9 +341,6 @@ describe('lending - e2e', () => {
                         console.log(e);
                         throw e;
                     }
-                    if (!context.proofs) {
-                        lender.requireSignature();
-                    }
                 }
             );
             await context.signOrProve(tx2, accounts[0], [lenderPk]);
@@ -395,18 +381,6 @@ describe('lending - e2e', () => {
                         borrowWitness,
                         borrowUserInfo
                     );
-                    if (!context.proofs) {
-                        lender.requireSignature();
-                        lender.self.children.accountUpdates.forEach((x) => {
-                            x.requireSignature();
-                            x.children.accountUpdates.forEach((y) => {
-                                y.requireSignature()
-                                y.children.accountUpdates.forEach((z) =>
-                                    z.requireSignature()
-                                );
-                            });
-                        });
-                    }
                 }
             );
 

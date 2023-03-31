@@ -58,17 +58,12 @@ export function getTestContext(): TestContext {
 
     const signOrProve = async function signOrProve(
         tx: Mina.Transaction,
-        sender: PrivateKey,
-        pks: PrivateKey[]
+        sender: PrivateKey
     ) {
-        if (proofs) {
-            tic('Proving Tx');
-            await tx.prove();
-            toc();
-            tx.sign([...pks, sender]); //TODO remove pks
-        } else {
-            tx.sign([...pks, sender]);
-        }
+        tic('Proving Tx');
+        await tx.prove();
+        toc();
+        tx.sign([sender]);
     };
 
     let deployArgs: DeployArgsFactory = async (
@@ -164,7 +159,7 @@ export function getTestContext(): TestContext {
             return;
         },
         getAccount,
-        editPermission: proofs ? Permissions.proof() : Permissions.signature(),
+        editPermission: Permissions.proof(),//proofs ? Permissions.proof() : Permissions.signature(),
         defaultFee: UInt64.from(0.01 * 1e9),
         waitOnTransaction: async (tx: TransactionId, timeout?: number) => {
 
