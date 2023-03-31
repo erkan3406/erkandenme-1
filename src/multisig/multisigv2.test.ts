@@ -80,7 +80,7 @@ describe('Multisig - E2E', () => {
             }
         );
 
-        await context.signOrProve(tx, accounts[0]);
+        await context.signOrProve(tx, accounts[0], pk);
 
         let txId = await tx.send();
 
