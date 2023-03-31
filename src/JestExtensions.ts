@@ -102,41 +102,6 @@ export function getTestContext(): TestContext {
         return Mina.getAccount(publicKey, tokenId);
     }
 
-    // let ledger = Ledger.create([])
-    // let nonceOffsets: { [key: string]: bigint } = {}
-    //
-    // let applyTransaction = async function(tx: Types.ZkappCommand){
-    //
-    //     for(let auHolder of tx.accountUpdates){
-    //         let au = auHolder.body
-    //         if(!Mina.hasAccount(au.publicKey, au.tokenId)){
-    //             if(context.berkeley){
-    //                 let fetch = await fetchAccount({publicKey: au.publicKey, tokenId: au.tokenId})
-    //                 if(!fetch.error){
-    //                     nonceOffsets[fetch.account.publicKey.toBase58()] = fetch.account.nonce.toBigint()
-    //                     ledger.addAccount(au.publicKey, fetch.account.balance.toString())
-    //                 }else{
-    //                     nonceOffsets[au.publicKey.toBase58()] = 0n
-    //                     ledger.addAccount(au.publicKey, "0")
-    //                 }
-    //             }else{
-    //                 return //TODO Ok?
-    //             }
-    //         }
-    //     }
-    //
-    //     ledger.applyJsonTransaction(
-    //         JSON.stringify(Types.ZkappCommand.toJSON(tx)),
-    //         String(1e9),
-    //         JSON.stringify(Mina.getNetworkState())
-    //     )
-    //     let pks = tx.accountUpdates.map(x => x.body.publicKey).filter((value, index, array) => array.indexOf(value) === index)
-    //     for(let pk of pks){
-    //         addCachedAccount()
-    //     }
-    //
-    // }
-
     let fetchAccounts = async function(tx: Mina.Transaction) {
 
         if(deployToBerkeley){

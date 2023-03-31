@@ -47,7 +47,7 @@ describe('lending - e2e', () => {
         let deployArgs = await context.getDeployArgs(pk, LendableToken);
 
         let tx = await Mina.transaction(
-            { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
+            { sender: accounts[0].toPublicKey(), fee: context.defaultFee, memo: "Deploy token " + symbol },
             () => {
                 AccountUpdate.fundNewAccount(accounts[0].toPublicKey(), 2);
 
@@ -86,6 +86,7 @@ describe('lending - e2e', () => {
                 sender: accounts[0].toPublicKey(),
                 fee: context.defaultFee,
                 nonce: nonce,
+                memo: "Deploy Lender"
             },
             () => {
                 AccountUpdate.fundNewAccount(accounts[0].toPublicKey(), 2);
@@ -167,7 +168,7 @@ describe('lending - e2e', () => {
                 )
             );
             let tx = await Mina.transaction(
-                { sender: accounts[0].toPublicKey(), fee: context.defaultFee },
+                { sender: accounts[0].toPublicKey(), fee: context.defaultFee, memo: "sendTokens" },
                 () => {
                     AccountUpdate.fundNewAccount(accounts[0].toPublicKey(), 1);
 
@@ -219,7 +220,7 @@ describe('lending - e2e', () => {
         EXTENDED_JEST_TIMEOUT
     );
 
-    it2(`Adding liquidity and borrowing - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
+    it(`Adding liquidity and borrowing - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
         async () => {
             let witnessService = staticWitnessService;
             witnessService.initUser(accounts[0].toPublicKey().toBase58());
@@ -278,7 +279,7 @@ describe('lending - e2e', () => {
             let amount = UInt64.from(10000);
 
             let tx3 = await Mina.transaction(
-                {sender: accounts[0].toPublicKey(), fee: context.defaultFee, nonce: ++startingNonce },
+                {sender: accounts[0].toPublicKey(), fee: context.defaultFee, nonce: ++startingNonce, memo: "addLiquidity" },
                 () => {
 
                     let tokenAu = AccountUpdate.createSigned(
@@ -342,7 +343,7 @@ describe('lending - e2e', () => {
             lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
             //Rollup Liquidity
             let tx2 = await Mina.transaction(
-                {sender: accounts[0].toPublicKey(), fee: context.defaultFee, nonce: ++startingNonce},
+                {sender: accounts[0].toPublicKey(), fee: context.defaultFee, nonce: ++startingNonce, memo: "rollupLiquidity" },
                 () => {
                     try {
                         lender.rollupLiquidity();
@@ -383,7 +384,7 @@ describe('lending - e2e', () => {
 
             lender = Lender.getInstance(lenderPk.toPublicKey(), witnessService);
             let tx4 = await Mina.transaction(
-                {sender: accounts[0].toPublicKey(), fee: context.defaultFee, nonce: ++startingNonce},
+                {sender: accounts[0].toPublicKey(), fee: context.defaultFee, nonce: ++startingNonce, memo: "borrow" },
                 () => {
 
                     lender.borrow(

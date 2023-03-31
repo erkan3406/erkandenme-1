@@ -57,7 +57,7 @@ describe('Multisig - E2E', () => {
         let editPermission = editPermissionOverride ?? context.editPermission
 
         let tx = await Mina.transaction(
-            {sender: accounts[0].toPublicKey(), fee: context.defaultFee},
+            {sender: accounts[0].toPublicKey(), fee: context.defaultFee, memo: "deployAndFundMultisig" },
             () => {
                 //Pay account creation fee
                 AccountUpdate.fundNewAccount(
@@ -270,7 +270,7 @@ describe('Multisig - E2E', () => {
             blockchainLength = Mina.getNetworkState().globalSlotSinceGenesis.toBigint()
         }
 
-        let tx2 = await Mina.transaction({ sender: accounts[0].toPublicKey(), fee: context.defaultFee }, () => {
+        let tx2 = await Mina.transaction({ sender: accounts[0].toPublicKey(), fee: context.defaultFee, memo: "depositTimelocked" }, () => {
 
             AccountUpdate.createSigned(accounts[0].toPublicKey())
                 .balance.subInPlace(amount)
@@ -393,7 +393,7 @@ describe('Multisig - E2E', () => {
         await context.getAccount(contract.address)
 
         let tx2 = await Mina.transaction(
-            {sender: accounts[0].toPublicKey(), fee: context.defaultFee},
+            {sender: accounts[0].toPublicKey(), fee: context.defaultFee, memo: "approveWithProof" },
             () => {
                 contract.approveWithProof(proof);
                 if (!context.proofs) {
