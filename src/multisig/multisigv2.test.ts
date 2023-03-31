@@ -80,7 +80,7 @@ describe('Multisig - E2E', () => {
             }
         );
 
-        await context.signOrProve(tx, accounts[0], [pk, accounts[0]]);
+        await context.signOrProve(tx, accounts[0]);
 
         let txId = await tx.send();
 
@@ -270,7 +270,7 @@ describe('Multisig - E2E', () => {
 
             contract.depositTimelocked(amount, time)
         })
-        await context.signOrProve(tx2, accounts[0], [contractPk])
+        await context.signOrProve(tx2, accounts[0])
         await context.waitOnTransaction(await tx2.send())
         await context.fetchAccounts(tx2)
 
@@ -389,7 +389,7 @@ describe('Multisig - E2E', () => {
                 contract.approveWithProof(proof);
             }
         );
-        await context.signOrProve(tx2, accounts[0], [contractPk]);
+        await context.signOrProve(tx2, accounts[0]);
         let txId2 = await tx2.send()
 
         await context.waitOnTransaction(txId2)

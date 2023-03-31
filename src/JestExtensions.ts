@@ -28,8 +28,7 @@ type TestContext = {
     proofs: boolean;
     signOrProve: (
         tx: Mina.Transaction,
-        sender: PrivateKey,
-        pks: PrivateKey[]
+        ...pks: PrivateKey[]
     ) => Promise<void>;
     getDeployArgs: DeployArgsFactory;
     before: () => Promise<void>;
@@ -58,12 +57,12 @@ export function getTestContext(): TestContext {
 
     const signOrProve = async function signOrProve(
         tx: Mina.Transaction,
-        sender: PrivateKey
+        ...pks: PrivateKey[]
     ) {
         tic('Proving Tx');
         await tx.prove();
         toc();
-        tx.sign([sender]);
+        tx.sign(pks);
     };
 
     let deployArgs: DeployArgsFactory = async (
@@ -83,7 +82,7 @@ export function getTestContext(): TestContext {
                 verificationKey,
             };
         } else {
-            return { zkappKey: pk };
+            return { };
         }
     };
 

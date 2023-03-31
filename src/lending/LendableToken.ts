@@ -40,7 +40,6 @@ export class LendableToken extends SmartContract {
 
     deployToken(
         args: DeployArgs,
-        editPermission: Types.AuthRequired,
         tokenSymbol: string
     ) {
         super.deploy(args);
@@ -49,11 +48,11 @@ export class LendableToken extends SmartContract {
 
         this.account.permissions.set({
             ...Permissions.default(),
-            editState: editPermission,
-            setTokenSymbol: editPermission,
-            send: editPermission,
-            receive: editPermission,
-            editSequenceState: editPermission,
+            editState: Permissions.proof(),
+            setTokenSymbol: Permissions.proof(),
+            send: Permissions.proof(),
+            receive: Permissions.proof(),
+            editSequenceState: Permissions.proof(),
         });
 
         let sender = this.sender;
@@ -169,10 +168,10 @@ export class LendableToken extends SmartContract {
         let zkapp = AccountUpdate.create(address, tokenId);
         zkapp.account.permissions.set({
             ...Permissions.default(),
-            editState: proof ? Permissions.proof() : Permissions.signature(),
-            send: proof ? Permissions.proof() : Permissions.signature(),
+            editState: Permissions.proof(),
+            send: Permissions.proof(),
             receive: Permissions.none(),
-            incrementNonce: proof ? Permissions.proof() : Permissions.signature(),
+            incrementNonce: Permissions.proof(),
             setTokenSymbol: Permissions.proofOrSignature()
         });
         return zkapp

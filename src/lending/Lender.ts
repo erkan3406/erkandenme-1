@@ -73,18 +73,16 @@ export class Lender extends SmartContract {
         return contract;
     }
 
-    customDeploy(args: DeployArgs, proofsEnabled: boolean) {
+    deploy(args: DeployArgs) {
         super.deploy(args);
-
-        const editPermission = proofsEnabled ? Permissions.proof() : Permissions.signature();
 
         this.account.permissions.set({
             ...Permissions.default(),
-            editState: editPermission,
-            setTokenSymbol: editPermission,
-            send: editPermission,
-            receive: editPermission,
-            editSequenceState: editPermission,
+            editState: Permissions.proof(),
+            setTokenSymbol: Permissions.proof(),
+            send: Permissions.proof(),
+            receive: Permissions.proof(),
+            editSequenceState: Permissions.proof(),
         });
     }
 

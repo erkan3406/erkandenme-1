@@ -54,12 +54,11 @@ describe('lending - e2e', () => {
                 let contract = new LendableToken(pk.toPublicKey());
                 contract.deployToken(
                     deployArgs,
-                    context.editPermission,
                     symbol
                 );
             }
         );
-        await context.signOrProve(tx, accounts[0], [accounts[0], pk]);
+        await context.signOrProve(tx, accounts[0], pk);
 
         console.log(
             'Deploying Token ' + symbol + ' to ' + pk.toPublicKey().toBase58()
@@ -96,7 +95,7 @@ describe('lending - e2e', () => {
                     pk.toPublicKey(),
                     witnessService
                 );
-                contract.customDeploy(deployArgs, context.proofs);
+                contract.deploy(deployArgs);
 
                 let token = new LendableToken(tokenPk.toPublicKey())
                 if(context.proofs){
@@ -108,7 +107,7 @@ describe('lending - e2e', () => {
                 // tokenHolder.deploy(tokenHolderDeployArgs)
             }
         );
-        await context.signOrProve(tx, accounts[0], [accounts[0], pk, tokenPk]);
+        await context.signOrProve(tx, accounts[0], pk);
 
         return { tx: await tx.send(), pk, rawTx: tx };
     }
@@ -179,7 +178,7 @@ describe('lending - e2e', () => {
                     );
                 }
             );
-            await context.signOrProve(tx, accounts[0], [tokenPk]);
+            await context.signOrProve(tx, accounts[0]);
 
             let txId = await tx.send();
             await context.waitOnTransaction(txId);
@@ -287,7 +286,7 @@ describe('lending - e2e', () => {
                     lender.addLiquidity(tokenAu, token.address, amount);
                 }
             );
-            await context.signOrProve(tx3, accounts[0], [lenderPk, tokenPk]);
+            await context.signOrProve(tx3, accounts[0]);
             let tx3Id = await tx3.send();
 
             expect(tx3Id.isSuccess).toBeTruthy()
@@ -343,7 +342,7 @@ describe('lending - e2e', () => {
                     }
                 }
             );
-            await context.signOrProve(tx2, accounts[0], [lenderPk]);
+            await context.signOrProve(tx2, accounts[0]);
             await (await tx2.send()).wait();
 
             let contractAccount0 = await context.getAccount(lender.address);
@@ -386,7 +385,7 @@ describe('lending - e2e', () => {
 
             console.log(tx4.toPretty());
 
-            await context.signOrProve(tx4, accounts[0], [lenderPk, tokenPk]);
+            await context.signOrProve(tx4, accounts[0]);
             await context.waitOnTransaction(await tx4.send());
 
             let borrowAccount0 = await context.getAccount(
