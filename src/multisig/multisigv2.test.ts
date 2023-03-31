@@ -328,7 +328,7 @@ describe('Multisig - E2E', () => {
 
     }, EXTENDED_JEST_TIMEOUT)
 
-    it(`enabled Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
+    it(`Test Approve - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`, async () => {
 
         console.log("Starting approve test")
 
@@ -384,10 +384,6 @@ describe('Multisig - E2E', () => {
 
         let proof = await mergeProofs(proof1, proof2);
 
-        if (context.proofs) {
-            console.log(proof.toJSON());
-        }
-
         expect(proof).toBeDefined();
         console.log('Proofs generated!');
 
@@ -434,8 +430,6 @@ describe('Multisig - E2E', () => {
         expect(multiSigEvent.votes[1]).toEqual(Field(0))
         expect(multiSigEvent.passed).toEqual(Bool(true))
         expect(multiSigEvent.receiverCreationFeePaid).toEqual(Bool(!receiverFunded))
-
-        //TODO Unfunded account
 
     }, EXTENDED_JEST_TIMEOUT);
 });

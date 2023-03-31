@@ -11,7 +11,7 @@ import {
     Field,
     UInt32,
     MerkleMap,
-    Experimental, VerificationKey, Token, Permissions,
+    Experimental, VerificationKey, Token, Permissions, fetchAccount,
 } from 'snarkyjs';
 import * as fs from 'fs';
 import { LendableToken, TokenUserEvent } from './LendableToken';
@@ -134,7 +134,8 @@ describe('lending - e2e', () => {
     it(`Basic token functionality - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
         async () => {
             let deployResult = await deployNewToken('T1');
-            await deployResult.tx.wait();
+            await context.waitOnTransaction(deployResult.tx);
+            await context.fetchAccounts(deployResult.rawTx)
             let tokenPk = deployResult.pk;
             let token = new LendableToken(tokenPk.toPublicKey());
 
@@ -216,7 +217,7 @@ describe('lending - e2e', () => {
         EXTENDED_JEST_TIMEOUT
     );
 
-    it(`Adding liquidity and borrowing - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
+    it2(`Adding liquidity and borrowing - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
         async () => {
             let witnessService = staticWitnessService;
             witnessService.initUser(accounts[0].toPublicKey().toBase58());

@@ -221,11 +221,7 @@ export function getTestContext(): TestContext {
                     running = false
                 }catch(e){
                     console.log(e)
-                    console.log("Continuing to wait")
-                    // let e2 = e as Error
-                    // if(e2.message.includes("Exceeded")){
-                    //     throw e
-                    // }
+                    console.log("Continuing to wait (" + counter + ")")
                 }
                 if(counter >= 10){
                     return
