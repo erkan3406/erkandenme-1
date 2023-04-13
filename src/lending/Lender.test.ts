@@ -23,7 +23,7 @@ import {
     LiquidityAddEvent,
     ValuedMerkleTreeWitness,
 } from './model';
-import { sleep, structArrayToFields, TransactionId } from '../utils';
+import {dummyVerificationKey, sleep, structArrayToFields, TransactionId} from '../utils';
 import { Lender, staticWitnessService } from './Lender';
 import {
     EXTENDED_JEST_TIMEOUT,
@@ -101,10 +101,8 @@ describe('lending - e2e', () => {
                 if(context.proofs){
                     token.deployZkapp(pk.toPublicKey(), LenderTokenHolder._verificationKey!)
                 }else{
-                    token.deployZkappSignature(pk.toPublicKey())
+                    token.deployZkapp(pk.toPublicKey(), dummyVerificationKey())
                 }
-                // let tokenHolder = new LenderTokenHolder(pk.toPublicKey(), token.token.id)
-                // tokenHolder.deploy(tokenHolderDeployArgs)
             }
         );
         await context.signOrProve(tx, accounts[0], pk);
@@ -130,7 +128,7 @@ describe('lending - e2e', () => {
 
     let tokenPreMint = 1000000000n;
 
-    it(`Basic token functionality - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
+    it2(`Basic token functionality - berkeley: ${deployToBerkeley}, proofs: ${context.proofs}`,
         async () => {
             let deployResult = await deployNewToken('T1');
             await context.waitOnTransaction(deployResult.tx);
@@ -150,7 +148,7 @@ describe('lending - e2e', () => {
                 setTokenSymbol: context.editPermission,
                 send: context.editPermission,
                 receive: context.editPermission,
-                editSequenceState: context.editPermission,
+                editActionState: context.editPermission,
             })
 
             let balance = token.getBalance(accounts[0].toPublicKey());
@@ -191,11 +189,14 @@ describe('lending - e2e', () => {
             let balance2 = token.getBalance(accounts[1].toPublicKey());
             expect(balance2).toEqual(amount);
 
+            let acc = await context.getAccount(tokenPk.toPublicKey())
+            console.log(acc.zkapp!.verificationKey!.hash.toString())
+
             let events = await context.fetchEvents(() => token.fetchEvents(), { expectedLength: 2 })
             expect(events.length).toEqual(2);
 
             let decodedEvents = events.map((event) => {
-                return event.event as unknown as TokenUserEvent
+                return event.event.data as unknown as TokenUserEvent
             });
 
             //Check deploy transfer event
@@ -258,7 +259,7 @@ describe('lending - e2e', () => {
                 setTokenSymbol: context.editPermission,
                 send: context.editPermission,
                 receive: context.editPermission,
-                editSequenceState: context.editPermission,
+                editActionState: context.editPermission,
             })
 
             let lenderTokenAccount = Mina.getAccount(lender.address, Field(token.token.id.toBigInt()))
@@ -300,15 +301,12 @@ describe('lending - e2e', () => {
             expect(state[1]).toEqual(Field(0));
 
             //Check emitted LiquidityAddEvent
-            if(context.berkeley) {
-                await sleep(15000);
-                console.log("Waiting 15s")
-            }
-
             let events1 = await context.fetchEvents(() => lender.fetchEvents(), { expectedLength: 1 })
             expect(events1.length).toEqual(1);
 
-            let liquidityAddEvent = events1[0].event as unknown as LiquidityAddEvent;
+            console.log(events1)
+
+            let liquidityAddEvent = events1[0].event.data as unknown as LiquidityAddEvent;
             expect(liquidityAddEvent.amount).toEqual(amount);
             expect(liquidityAddEvent.tokenId).toEqual(token.token.id);
             expect(liquidityAddEvent.account).toEqual(
@@ -420,7 +418,7 @@ describe('lending - e2e', () => {
             let events2 = await context.fetchEvents(() => lender.fetchEvents(), { expectedLength: 2 })
             expect(events2.length).toEqual(2);
 
-            let borrowEvent = (events2.find(x => x.type === 'borrow')?.event) as unknown as BorrowEvent | undefined;
+            let borrowEvent = (events2.find(x => x.type === 'borrow')?.event.data) as unknown as BorrowEvent | undefined;
             expect(borrowEvent).toBeDefined()
             expect(borrowEvent?.amount).toEqual(borrowAmount);
             expect(borrowEvent?.tokenId).toEqual(token.token.id);

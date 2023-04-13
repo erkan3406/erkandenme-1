@@ -82,7 +82,7 @@ export class Lender extends SmartContract {
             setTokenSymbol: Permissions.proof(),
             send: Permissions.proof(),
             receive: Permissions.proof(),
-            editSequenceState: Permissions.proof(),
+            editActionState: Permissions.proof(),
         });
     }
 
@@ -140,7 +140,7 @@ export class Lender extends SmartContract {
         this.totalCollateral.assertEquals(totalCollateral);
 
         let actions = this.reducer.getActions({
-            fromActionHash: latestActionsHash,
+            fromActionState: latestActionsHash,
         });
 
         let reducerState = new LenderLiquidityReducerResult({

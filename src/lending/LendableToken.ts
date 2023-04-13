@@ -52,7 +52,7 @@ export class LendableToken extends SmartContract {
             setTokenSymbol: Permissions.proof(),
             send: Permissions.proof(),
             receive: Permissions.proof(),
-            editSequenceState: Permissions.proof(),
+            editActionState: Permissions.proof(),
         });
 
         let sender = this.sender;
@@ -85,20 +85,20 @@ export class LendableToken extends SmartContract {
         );
     }
 
-    @method approveTransferCallback(
-        callback: Experimental.Callback<any>,
-        receiverAddress: PublicKey,
-        amount: UInt64
-    ) {
-        const layout = AccountUpdate.Layout.AnyChildren;
-
-        this.approve(callback, layout);
-
-        this.token.mint({
-            address: receiverAddress,
-            amount: amount,
-        });
-    }
+    // @method approveTransferCallback(
+    //     callback: Experimental.Callback<any>,
+    //     receiverAddress: PublicKey,
+    //     amount: UInt64
+    // ) {
+    //     const layout = AccountUpdate.Layout.AnyChildren;
+    //
+    //     this.approve(callback, layout);
+    //
+    //     this.token.mint({
+    //         address: receiverAddress,
+    //         amount: amount,
+    //     });
+    // }
 
     //Copied from snarkyjs/examples/dex.ts
     @method approveUpdateAndSend(
@@ -107,7 +107,7 @@ export class LendableToken extends SmartContract {
         amount: UInt64
     ) {
         // TODO: THIS IS INSECURE. The proper version has a prover error (compile != prove) that must be fixed
-        this.approve(zkappUpdate, AccountUpdate.Layout.AnyChildren);
+        this.approve(zkappUpdate, AccountUpdate.Layout.NoChildren);
 
         // THIS IS HOW IT SHOULD BE DONE:
         // // approve a layout of two grandchildren, both of which can't inherit the token permission
@@ -165,7 +165,7 @@ export class LendableToken extends SmartContract {
 
     private doDeployZkapp(address: PublicKey, proof: boolean) : AccountUpdate{
         let tokenId = this.token.id;
-        let zkapp = AccountUpdate.create(address, tokenId);
+        let zkapp = AccountUpdate.create(address, tokenId); //Gets approved automatically
         zkapp.account.permissions.set({
             ...Permissions.default(),
             editState: Permissions.proof(),
