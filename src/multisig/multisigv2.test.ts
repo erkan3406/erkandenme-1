@@ -292,7 +292,7 @@ describe('Multisig - E2E', () => {
         let events = await context.fetchEvents(() => contract.fetchEvents(), { expectedLength : 1})
         expect(events.length).toBeGreaterThanOrEqual(1)
 
-        let event = events[0].event as unknown as FundsLockedEvent
+        let event = events[0].event.data as unknown as FundsLockedEvent
         expect(event.amount).toEqual(amount)
         expect(event.time).toEqual(time)
 
@@ -412,7 +412,7 @@ describe('Multisig - E2E', () => {
 
         expect(events.length).toBeGreaterThanOrEqual(1)
 
-        let multiSigEvent = events[0].event as unknown as MultiSigEvent
+        let multiSigEvent = events[0].event.data as unknown as MultiSigEvent
         expect(multiSigEvent.proposal).toEqual(proposal)
         expect(multiSigEvent.votes[0]).toEqual(Field(2))
         expect(multiSigEvent.votes[1]).toEqual(Field(0))

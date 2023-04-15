@@ -64,7 +64,7 @@ export class MultiSigContract extends SmartContract {
         this.account.permissions.set({
             ...Permissions.default(),
             editState: editPermission,
-            editSequenceState: editPermission,
+            editActionState: editPermission,
             incrementNonce: editPermission,
             setVerificationKey: Permissions.impossible(),
             setPermissions: editPermission,

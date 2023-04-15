@@ -44,6 +44,8 @@ type DeployVK = { data: string; hash: string | Field };
 
 let vkCache: { [key: string]: DeployVK } = {};
 
+let key_offset = 0
+
 /**
  * Generates a new TestContext which includes all reusable functions which a Mina test will use.
  * It checks for two environment-variables
@@ -207,7 +209,9 @@ export function getTestContext(): TestContext {
                 archive: config.networks.berkeley.archive,
             });
             Mina.setActiveInstance(Blockchain);
-            context.accounts = getBerkeleyAccounts(10);
+            let accounts = getBerkeleyAccounts(20);
+            context.accounts = accounts.slice(key_offset).concat(accounts.slice(0, key_offset))
+            key_offset += 7
 
             let mainPk = context.accounts[0].toPublicKey();
 
