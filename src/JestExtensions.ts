@@ -53,7 +53,7 @@ let vkCache: { [key: string]: DeployVK } = {};
  */
 export function getTestContext(): TestContext {
     let deployToBerkeley = process.env.TEST_ON_BERKELEY === 'true' ?? false;
-    let proofs = process.env.TEST_WITH_PROOFS === 'true' ?? true;
+    let proofs = process.env.TEST_WITH_PROOFS === 'true' ?? false;
 
     const signOrProve = async function signOrProve(
         tx: Mina.Transaction,
