@@ -33,7 +33,7 @@ import config from "../../config.json"
 
 describe('Multisig - E2E', () => {
 
-    let context = getTestContext()
+    let context = getTestContext(10)
 
     let accounts: PrivateKey[],
         deployToBerkeley = context.berkeley;
