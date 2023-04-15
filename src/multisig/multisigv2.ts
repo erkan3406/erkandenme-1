@@ -4,12 +4,8 @@ import {
     Circuit,
     DeployArgs,
     Field,
-    MerkleMapWitness,
     method,
     Mina,
-    Poseidon,
-    PublicKey,
-    Signature,
     SmartContract,
     State,
     state,
@@ -21,7 +17,6 @@ import {
 } from 'snarkyjs';
 
 import {Proposal, ProposalState, SignerState} from './model';
-import {MerkleMapUtils} from '../utils';
 import {MultisigProgramProof} from './multisigv2program';
 
 export class MultiSigEvent extends Struct({

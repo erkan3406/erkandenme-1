@@ -255,8 +255,6 @@ export class Lender extends SmartContract {
             this.network.totalCurrency.get().mul(2)
         );
 
-        //TODO More preconditions
-
         let sender = this.sender;
 
         let liquidityRoot = this.userLiquidityRoot.get();

@@ -1,45 +1,11 @@
 // helpers
 import {
-    Bool,
     Field,
     isReady,
-    MerkleMapWitness,
-    Mina,
-    PrivateKey, VerificationKey,
+    VerificationKey,
 } from 'snarkyjs';
-import fs from 'fs';
 
 await isReady;
-
-export function createLocalBlockchain(): PrivateKey {
-    let Local = Mina.LocalBlockchain({ accountCreationFee: 1e9 });
-    Mina.setActiveInstance(Local);
-
-    const account = Local.testAccounts[0].privateKey;
-    return account;
-}
-
-export function createBerkeley(): PrivateKey {
-    let berkeley = Mina.Network(
-        'https://proxy.berkeley.minaexplorer.com/graphql'
-    );
-
-    Mina.setActiveInstance(berkeley);
-
-    let data = JSON.parse(
-        fs.readFileSync('keys/wallet.json', { encoding: 'utf-8' })
-    );
-    let pk = PrivateKey.fromBase58(data['privateKey']);
-    return pk;
-}
-
-export interface ProveMethod {
-    verificationKey?: {
-        data: string;
-        hash: Field | string;
-    };
-    zkappKey?: PrivateKey;
-}
 
 export function dummyVerificationKey() : VerificationKey{
     let data = 'AgIBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALsq7cojes8ZcUc9M9RbZY9U7nhj8KnfU3yTEgqjtXQbAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC7Ku3KI3rPGXFHPTPUW2WPVO54Y/Cp31N8kxIKo7V0GwEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAuyrtyiN6zxlxRz0z1Ftlj1TueGPwqd9TfJMSCqO1dBsBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
@@ -59,46 +25,12 @@ export function dummyVerificationKey() : VerificationKey{
 }
 
 //Generic Utils
-
 interface Fieldable {
     toFields(): Field[];
 }
 
 export function structArrayToFields(...args: Fieldable[]): Field[] {
     return args.map((x) => x.toFields()).reduce((a, b) => a.concat(b), []);
-}
-
-//MerkleMap
-
-export class MerkleMapUtils {
-    static EMPTY_VALUE = Field(0);
-
-    static checkMembership(
-        witness: MerkleMapWitness,
-        root: Field,
-        key: Field,
-        value: Field
-    ): Bool {
-        let r = witness.computeRootAndKey(value);
-        r[0].assertEquals(root, '1');
-        r[1].assertEquals(key, '2');
-        return Bool(true);
-    }
-
-    static computeRoot(
-        witness: MerkleMapWitness,
-        key: Field,
-        value: Field
-    ): Field {
-        return witness.computeRootAndKey(value)[0];
-    }
-
-    // static getValuedWitness(map: MerkleMap, key: Field) : ValuedMerkleTreeWitness{
-    //     return new ValuedMerkleTreeWitness({
-    //         value: map.get(key),
-    //         witness: map.getWitness(key)
-    //     })
-    // }
 }
 
 export interface TransactionId {

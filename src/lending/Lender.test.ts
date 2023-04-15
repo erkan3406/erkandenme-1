@@ -1,8 +1,6 @@
 import {
     AccountUpdate,
-    MerkleTree,
     Mina,
-    Poseidon,
     PrivateKey,
     PublicKey,
     shutdown,
@@ -10,25 +8,18 @@ import {
     UInt64,
     Field,
     UInt32,
-    MerkleMap,
-    Experimental, VerificationKey, Token, Permissions, fetchAccount,
+    Permissions
 } from 'snarkyjs';
-import * as fs from 'fs';
 import { LendableToken, TokenUserEvent } from './LendableToken';
-import { tic, toc } from '../tictoc';
 import {
     BorrowEvent,
-    LENDING_MERKLE_HEIGHT,
-    LendingMerkleWitness,
     LiquidityAddEvent,
-    ValuedMerkleTreeWitness,
 } from './model';
 import {dummyVerificationKey, sleep, structArrayToFields, TransactionId} from '../utils';
 import { Lender, staticWitnessService } from './Lender';
 import {
     EXTENDED_JEST_TIMEOUT,
     getTestContext,
-    it2,
 } from '../JestExtensions';
 import { expect } from '@jest/globals';
 import { WitnessService } from './WitnessService';
@@ -76,7 +67,7 @@ describe('lending - e2e', () => {
 
         console.log('Deploying Lender to ' + pk.toPublicKey().toBase58());
 
-        let tokenHolderDeployArgs = await context.getDeployArgs(pk, LenderTokenHolder)
+        await context.getDeployArgs(pk, LenderTokenHolder)
 
         let deployArgs = await context.getDeployArgs(pk, Lender);
 
@@ -428,7 +419,4 @@ describe('lending - e2e', () => {
         EXTENDED_JEST_TIMEOUT
     );
 
-    // it(`3 not equals 5 - berkeley?: ${deployToBerkeley}`, () => {
-    //     expect(3).not.toEqual(5);
-    // });
 });

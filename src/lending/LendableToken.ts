@@ -2,7 +2,6 @@ import {
     AccountUpdate,
     Circuit,
     DeployArgs,
-    Experimental,
     Field,
     Int64,
     MerkleTree,
@@ -15,7 +14,6 @@ import {
     State,
     state,
     Struct,
-    Types,
     UInt64, VerificationKey,
 } from 'snarkyjs';
 import { structArrayToFields } from '../utils';
@@ -84,21 +82,6 @@ export class LendableToken extends SmartContract {
             )
         );
     }
-
-    // @method approveTransferCallback(
-    //     callback: Experimental.Callback<any>,
-    //     receiverAddress: PublicKey,
-    //     amount: UInt64
-    // ) {
-    //     const layout = AccountUpdate.Layout.AnyChildren;
-    //
-    //     this.approve(callback, layout);
-    //
-    //     this.token.mint({
-    //         address: receiverAddress,
-    //         amount: amount,
-    //     });
-    // }
 
     //Copied from snarkyjs/examples/dex.ts
     @method approveUpdateAndSend(

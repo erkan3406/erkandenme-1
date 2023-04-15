@@ -10,15 +10,6 @@ import {
     UInt64,
 } from 'snarkyjs';
 import { structArrayToFields } from '../utils';
-//
-// export class TokenStats extends Struct({
-//
-//     key: PublicKey,
-//     totalAmount: UInt64,
-//     amountLentOut: UInt64,
-//     price: UInt64
-//
-// }){}
 
 export class LendingUserInfo extends Struct({
     liquidityRoot: Field, //TokenPK => Field
@@ -57,13 +48,8 @@ export class UserLiquidityAction extends Struct({
     amount: UInt64,
 }) {}
 
-export const LENDING_MERKLE_HEIGHT = 255; //10
+export const LENDING_MERKLE_HEIGHT = 255;
 
 export class LendingMerkleWitness extends MerkleWitness(
     LENDING_MERKLE_HEIGHT
 ) {}
-
-export class ValuedMerkleTreeWitness extends Struct({
-    value: Field,
-    witness: LendingMerkleWitness,
-}) {}
